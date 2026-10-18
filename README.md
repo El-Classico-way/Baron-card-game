@@ -55,3 +55,31 @@ or `ngrok http 8000` prints a public URL. WebSockets work through both.
 | Files | `client/js/core/socket.js` + the Python server | `client/js/mock/mock-socket.js` |
 | Cards, turns, hands | server-authoritative | fake, no rules |
 | Everything else in `client/` (store, renderer, controller, CSS) | shared by both | shared by both |
+
+## Game modes
+
+| Mode | State |
+|---|---|
+| **Výdrž** | Implemented (rules below). Placeholder card data and artwork. |
+| **Řežba** | Not implemented. Shown disabled in the lobby. The older prototype engine in `server/game` is only a stand-in and is reachable through a dev hook. |
+
+The host picks the mode in the lobby. Code lives in `server/modes/<mode>/`;
+the server owns all state and rules, the client only renders snapshots.
+
+### Výdrž
+
+`server/modes/vydrz/` (pure Python, tested without networking):
+each player gets one character, 8 locations (one of each number 1-8) and 8
+existences, all public. Each of the 8 rounds every player secretly picks one
+location + one existence; when all have picked, 3 drink cards are drawn and a
+player's number is the sum of those drinks' stats on their character, location
+and existence. The highest total wins the round and keeps the location (its
+number is added to their score); ties are broken by drawing one drink at a
+time and counting characters only. Highest final score wins, lowest loses.
+
+Card content is data: `server/modes/vydrz/data/vydrz.json`. It is currently
+random placeholder content from `python tools/generate_vydrz_data.py` (fixed
+seed). Replace the JSON with the real cards; the loader validates it.
+
+Settings (per device, in the lobby/table): sound on/off. Manual score counting
+is planned; only automatic counting with animation exists today.
