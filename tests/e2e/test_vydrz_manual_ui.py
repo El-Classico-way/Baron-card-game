@@ -117,6 +117,7 @@ def test_calculating_shows_pair_drinks_and_numpad(page, base_url):
     # The number pad replaces the keyboard: nothing editable gets focus.
     page.click("[data-field]")
     expect(page.locator(".np__panel")).to_be_visible()
+    page.wait_for_timeout(350)                                          # let the slide-in finish
     assert page.locator(".np__panel input").count() == 0
     assert page.evaluate("!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)")
     box = page.locator(".np__key--enter").bounding_box()
@@ -143,7 +144,7 @@ def test_correct_low_and_high_entries_show_the_right_tags(page, base_url):
     _wait_for_entry_open(page)
     right = _correct(page)
     _enter(page, right - 2)
-    me_row = page.locator(".vm-row", has_text="You")
+    me_row = page.locator(".vm-row", has_text="Ty")
     expect(me_row.locator(".vm-tag--blbec")).to_have_text("Blbec")
     expect(page.locator(".vm-field")).to_contain_text("zadáno")
     expect(page.locator("[data-field]")).to_be_disabled()                  # one entry only
@@ -156,7 +157,7 @@ def test_correct_low_and_high_entries_show_the_right_tags(page, base_url):
     _wait_for_entry_open(page)
     right = _correct(page)
     _enter(page, right + 3)
-    row = page.locator(".vm-row", has_text="You")
+    row = page.locator(".vm-row", has_text="Ty")
     expect(row.locator(".vm-tag--svindlir")).to_have_text("Švindlíř")
     expect(row.locator(".vm-row__val")).to_have_text("0")
     expect(page.locator('[data-act="next"]')).to_be_visible(timeout=20000)
@@ -166,7 +167,7 @@ def test_correct_low_and_high_entries_show_the_right_tags(page, base_url):
     _wait_for_entry_open(page)
     right = _correct(page)
     _enter(page, right)
-    row = page.locator(".vm-row", has_text="You")
+    row = page.locator(".vm-row", has_text="Ty")
     expect(row.locator(".vm-row__val")).to_have_text(str(right).replace("-", "−"))
     assert row.locator(".vm-tag").count() == 0
     assert not page.js_errors
@@ -187,8 +188,8 @@ def test_keyboard_works_on_the_number_pad(page, base_url):
     expect(page.locator("#np-display")).to_have_text(typed.replace("-", "−"))
     page.keyboard.press("Enter")
     expect(page.locator(".np__panel")).to_have_count(0)
-    expect(page.locator(".vm-row", has_text="You").locator(".vm-row__val")).to_have_text(typed.replace("-", "−"))
-    assert page.locator(".vm-row", has_text="You").locator(".vm-tag").count() == 0     # typed the right number
+    expect(page.locator(".vm-row", has_text="Ty").locator(".vm-row__val")).to_have_text(typed.replace("-", "−"))
+    assert page.locator(".vm-row", has_text="Ty").locator(".vm-tag").count() == 0     # typed the right number
 
 
 def test_full_manual_game_reaches_the_final_ranking(page, base_url):
@@ -206,10 +207,12 @@ def test_full_manual_game_reaches_the_final_ranking(page, base_url):
                 timeout=30000)
             if page.locator("[data-field]:not([disabled])").count():
                 _enter(page, _correct(page))                    # tie-breaks are counted by hand too
+                expect(page.locator("[data-field]")).to_be_disabled()   # wait until the server has taken the entry
             else:
                 break
         if rnd < 8:
             page.click('[data-act="next"]')
+            expect(page.locator('[data-act="next"]')).to_have_count(0)      # wait for the next round to begin
     expect(page.locator(".vr__ranking li")).to_have_count(2)
     expect(page.locator(".vr__ranking li.is-winner")).to_have_count(1)
     assert not page.js_errors

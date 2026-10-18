@@ -72,7 +72,7 @@ export class MockSocket {
     this._phase = "lobby";    // lobby | playing
     this._turnPhase = "draw";
     this._turnNo = 0;
-    this._name = "You";
+    this._name = "Ty";
     this._mode = ["rezba", "vydrz", "vydrz_rucne"].includes(mode) ? mode : "vydrz";    // lobby selection, like the real server
     this._vydrz = null;
   }

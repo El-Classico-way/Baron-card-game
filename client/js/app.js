@@ -131,7 +131,7 @@ function boot() {
     if (ribbon) ribbon.hidden = false;
     document.body.classList.add("has-ribbon");
     _showPanel(elements, "lobby");
-    socket.connect("DEMO", "You");
+    socket.connect("DEMO", "Ty");
     return;
   }
   const resumed = socket.tryResume();

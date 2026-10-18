@@ -156,7 +156,7 @@ export class Renderer {
           ${p.player_id === lobby.hostPlayerId
             ? '<span class="lobby-player__badge">host</span>' : ""}
           ${p.player_id === myPlayerId
-            ? '<span class="lobby-player__badge lobby-player__badge--you">you</span>' : ""}
+            ? '<span class="lobby-player__badge lobby-player__badge--you">ty</span>' : ""}
         </li>
       `).join("");
     }
