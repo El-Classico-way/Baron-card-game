@@ -17,11 +17,19 @@ const leaders = (vals, highest = true) => {
   return Object.keys(vals).filter(k => vals[k] === best);
 };
 
+
+/** Like the server: the final ranking stays hidden until the host announces the winner. */
+export function visibleResult(last, announced) {
+  if (!last || !last.final || announced) return last;
+  return { ...last, final: null, final_pending: true };
+}
+
 export class MockVydrz {
   /** @param {{id: string, name: string}[]} players  @param {(viewerId) => void} onChange */
   constructor(players, onChange) {
     this._onChange = onChange;
     this.phase = "choosing";
+    this.announced = false;
     this.round = 1;
     this.last = null;
     this._timers = [];
@@ -69,6 +77,13 @@ export class MockVydrz {
     if (this.players.every(x => x.pick)) this._resolve();
     this._onChange();
     return "";
+  }
+
+  announce() {
+    if (this.phase !== "finished") return "Hra ještě neskončila.";
+    this.announced = true;
+    this._onChange();
+    return null;
   }
 
   nextRound() {
@@ -154,7 +169,7 @@ export class MockVydrz {
       decks: { chlast: this.deck.length, chlast_discard: this.discard.length,
         lokace: 64 - 8 * this.players.length, existence: 64 - 8 * this.players.length,
         postava: DATA.characters.length - this.players.length },
-      last_result: this.last,
+      last_result: visibleResult(this.last, this.announced), winner_announced: this.announced,
     };
   }
 }

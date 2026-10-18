@@ -145,6 +145,11 @@ def test_full_mock_game_to_the_end(page, base_url):
         page.click(".vr__skip")
         if rnd < 8:
             page.click(".vr__next")
+    # The last round can be read first; the winner appears only when the host announces it.
+    expect(page.locator(".vr__announce")).to_be_visible(timeout=5000)
+    expect(page.locator("#baron-splash")).to_be_hidden()
+    expect(page.locator(".vr__final")).to_be_hidden()
+    page.click(".vr__announce")
     expect(page.locator("#baron-splash")).to_be_visible(timeout=10000)        # "<Jméno> je Baron!" for everyone
     winner = page.locator("#baron-splash .bs__name").inner_text()
     expect(page.locator("#baron-splash .bs__title")).to_contain_text("je Baron!")
@@ -155,6 +160,7 @@ def test_full_mock_game_to_the_end(page, base_url):
     expect(page.locator(".vr__ranking li")).to_have_count(3)
     expect(page.locator(".vr__ranking li.is-winner")).to_have_count(1)
     expect(page.locator(".vr__ranking li.is-loser")).to_have_count(1)
+    expect(page.locator(".vr__lobby")).to_be_enabled()                         # the host can send everybody back
     assert not page.js_errors
 
 

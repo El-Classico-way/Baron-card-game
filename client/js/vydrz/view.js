@@ -20,6 +20,13 @@ import * as sfx from "./sound.js";
 const LONG_PRESS_MS = 450;
 const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+/** Host-only: remove a player who dropped out, so the game stops waiting for them. */
+export function dropButton(view, p) {
+  if (!view.isHost() || p.player_id === view._state.you || p.connected !== false || p.away) return "";
+  return `<div class="vs__drop"><p class="vs__note">${esc(p.display_name)} je odpojen(a).</p>
+    <button class="btn btn--small" type="button" data-drop="${esc(p.player_id)}">Hrát bez něj/ní</button></div>`;
+}
+
 export class VydrzView {
   /**
    * @param {{ socket, inspector, dealIntro, getHostId: () => string|null, onLeave: () => void, onConfirmLeave?: () => void }} deps
@@ -59,6 +66,8 @@ export class VydrzView {
     this._overlay = new ResultOverlay(this._el.result, {
       onNext: () => this._socket.send("vydrz_next_round"),
       onLeave: () => this._onLeave(),
+      onAnnounce: () => this._socket.send("vydrz_announce"),
+      onLobby: () => this._socket.send("return_to_lobby"),
     });
 
     bus.on("server:vydrz_state", (s) => this._onState(s));
@@ -107,6 +116,8 @@ export class VydrzView {
 
     sheet.addEventListener("click", (e) => {
       if (e.target.closest("[data-close]")) { this._closeSheet(); return; }
+      const drop = e.target.closest("[data-drop]");
+      if (drop) { this._socket.send("drop_player", { player_id: drop.dataset.drop }); this._closeSheet(); return; }
       const card = e.target.closest(".vc[data-uid]");
       if (card && this._viewPlayer) {
         const p = this._player(this._viewPlayer);
@@ -160,7 +171,9 @@ export class VydrzView {
 
   _onState(state) {
     if (state.mode !== "vydrz") return;           // the manual variant has its own view
+    const first = !this._state;                   // first state seen since the page loaded or the game began
     const prevRound = this._state?.round;
+    const wasAnnounced = this._state?.winner_announced ?? false;
     this._state = state;
     this._showPanel();
 
@@ -171,6 +184,8 @@ export class VydrzView {
 
     // The result of a freshly resolved round: animate it once, hold scores until it finishes.
     const result = state.last_result;
+    // A state that is just being (re)loaded shows where the game stands, without replaying anything.
+    if (first && result) this._seenRound = result.round;
     const fresh = result && result.round > this._seenRound;
     if (fresh) this._holdScores = result.scores_before;
 
@@ -181,6 +196,32 @@ export class VydrzView {
     // The host started the next round: the old result is no longer relevant.
     if (state.phase === "choosing" && result && result.round < state.round && this._overlay.isOpen) this._overlay.close();
     if (fresh) this._playResult(result);
+    else if (first && result && state.phase !== "choosing") this._reopenResult();     // back where they were
+    else if (state.winner_announced && !wasAnnounced && !first) this._playAnnouncement();
+  }
+
+  /** Host announced the winner while we are watching: splash once, then the final ranking. */
+  async _playAnnouncement() {
+    const r = this._state.last_result;
+    if (!r?.final) return;
+    if (!this._overlay.isOpen) await this._overlay.open(r, this._resultCtx(), { animate: false });
+    await this._overlay.announce(r.final, this._resultCtx(), { animate: true });
+  }
+
+  /** Back to the pre-game lobby: forget everything about the finished game. */
+  reset() {
+    this._overlay.close();
+    this._state = null;
+    this._seenRound = 0;
+    this._holdScores = null;
+    this._dealt = false;
+    this._dealing = false;
+    this._charLanded = false;
+    this._dealtUids.clear();
+    this._sel = { lokace: null, existence: null };
+    this._closeSheet();
+    this._el.settings.hidden = true;
+    this._el.panel.hidden = true;
   }
 
   async _playResult(result) {
@@ -197,8 +238,8 @@ export class VydrzView {
   _reopenResult() {
     const r = this._state?.last_result;
     if (!r) return;
-    this._overlay.open(r, this._resultCtx(), { animate: false });
     this._holdScores = null;
+    this._overlay.open(r, this._resultCtx(), { animate: false });
   }
 
   _showPanel() {
@@ -228,7 +269,7 @@ export class VydrzView {
       <button class="vy-player${p.player_id === s.you ? " is-me" : ""}${p.locked && s.phase === "choosing" ? " is-locked" : ""}" type="button" data-pid="${esc(p.player_id)}">
         <span class="vy-player__name">${esc(p.display_name)}</span>
         <span class="vy-player__score">${scores ? scores[p.player_id] : p.score}<small> b.</small></span>
-        <span class="vy-player__state">${p.away ? "odešel(a)" : s.phase === "choosing" ? (p.locked ? "✔ vybráno" : "vybírá…") : (p.won.length ? `${p.won.length}× lokace` : "")}</span>
+        <span class="vy-player__state">${p.away ? "odešel(a)" : p.connected === false ? "odpojen(a)" : s.phase === "choosing" ? (p.locked ? "✔ vybráno" : "vybírá…") : (p.won.length ? `${p.won.length}× lokace` : "")}</span>
       </button>`).join("");
   }
 
@@ -360,6 +401,7 @@ export class VydrzView {
       <div class="vs__panel">
         <header class="vs__head"><h2>${esc(p.display_name)} <small>${p.score} b.</small></h2>
           <button class="hud__btn" data-close type="button" aria-label="Zavřít">✕</button></header>
+        ${dropButton(this, p)}
         ${pickInfo}
         <h3>Postava</h3><div class="vs__row">${characterFront(p.character, { extra: "vc--mini" })}</div>
         <h3>Lokace (${p.locations.length})</h3><div class="vs__row">${p.locations.map(c => locationFront(c, { extra: "vc--mini" })).join("") || "<p class='vy-empty'>—</p>"}</div>

@@ -100,6 +100,7 @@ class VydrzGame:
         self._location_pool_left = 0
         self._existence_pool_left = 0
         self.last_result: dict | None = None
+        self.winner_announced = False             # the host has announced the winner
 
     # ------------------------------------------------------------------ setup
 
@@ -151,6 +152,21 @@ class VydrzGame:
         p.pick = (location_uid, existence_uid)
         self._resolve_if_complete()
         return ActionResult.success()
+
+    def action_announce(self) -> ActionResult:
+        """The host announces the winner; until then the final ranking stays hidden."""
+        if self.phase != Phase.FINISHED:
+            return ActionResult.fail("Hra ještě neskončila.")
+        if self.winner_announced:
+            return ActionResult.fail("Vítěz už byl ohlášen.")
+        self.winner_announced = True
+        return ActionResult.success()
+
+    def mark_back(self, player_id: str) -> None:
+        """A player who had left came back; they play for themselves again."""
+        p = self._player(player_id)
+        if p is not None:
+            p.away = False
 
     def mark_away(self, player_id: str) -> None:
         """A player left. The game never waits for them: their picks are made automatically."""
@@ -320,5 +336,13 @@ class VydrzGame:
                 "existence": self._existence_pool_left,
                 "postava": len(self.content.characters) - len(self.players),
             },
-            "last_result": self.last_result,
+            "last_result": self._visible_result(),
+            "winner_announced": self.winner_announced,
         }
+
+    def _visible_result(self) -> dict | None:
+        """The last result; the final ranking is only included once the host announced it."""
+        r = self.last_result
+        if r is None or r.get("final") is None or self.winner_announced:
+            return r
+        return {**r, "final": None, "final_pending": True}

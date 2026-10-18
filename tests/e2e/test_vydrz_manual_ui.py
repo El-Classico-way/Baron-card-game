@@ -239,7 +239,7 @@ def test_full_manual_game_reaches_the_final_ranking(page, base_url):
         while guard < 12:
             guard += 1
             page.wait_for_function(
-                "document.querySelector('[data-submit]:not([disabled])') || document.querySelector('[data-act=\"next\"]') || document.querySelector('[data-act=\"leave\"]')",
+                "document.querySelector('[data-submit]:not([disabled])') || document.querySelector('[data-act=\"next\"]') || document.querySelector('[data-act=\"announce\"]')",
                 timeout=30000)
             if page.locator("[data-submit]:not([disabled])").count():
                 _enter(page, _correct(page))                    # tie-breaks are counted by hand too
@@ -249,12 +249,17 @@ def test_full_manual_game_reaches_the_final_ranking(page, base_url):
         if rnd < 8:
             page.click('[data-act="next"]')
             expect(page.locator('[data-act="next"]')).to_have_count(0)      # wait for the next round to begin
+    expect(page.locator('[data-act="announce"]')).to_be_visible()             # last round can be read first
+    expect(page.locator("#baron-splash")).to_be_hidden()
+    expect(page.locator(".vr__ranking li")).to_have_count(0)
+    page.click('[data-act="announce"]')
     expect(page.locator("#baron-splash")).to_be_visible(timeout=10000)       # everybody sees who is the Baron
     expect(page.locator("#baron-splash .bs__title")).to_contain_text("je Baron!")
     page.click("#baron-splash .bs__btn")
     expect(page.locator("#baron-splash")).to_be_hidden()
     expect(page.locator(".vr__ranking li")).to_have_count(2)
     expect(page.locator(".vr__ranking li.is-winner")).to_have_count(1)
+    expect(page.locator('[data-act="lobby"]')).to_be_enabled()
     assert not page.js_errors
 
 

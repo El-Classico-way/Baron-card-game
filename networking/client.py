@@ -58,7 +58,9 @@ from fastapi import WebSocket
 logger = logging.getLogger(__name__)
 
 # How long (seconds) to keep a disconnected player's slot before eviction.
-RECONNECT_GRACE_SECONDS: float = 30.0
+# Long enough for a phone that was in another app for a while; the host can drop
+# somebody earlier (drop_player) so the others do not have to wait.
+RECONNECT_GRACE_SECONDS: float = 300.0
 
 # Maximum outbound messages queued per client before oldest are dropped.
 MAX_QUEUE_SIZE: int = 64

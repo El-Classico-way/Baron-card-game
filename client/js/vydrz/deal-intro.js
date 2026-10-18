@@ -15,7 +15,7 @@
 import { cardBack, cardFront } from "./cards.js";
 import * as sfx from "./sound.js";
 
-const T = { fly: 340, flip: 240, hold: 400, land: 320, gap: 90 };
+const T = { back: 140, fly: 340, flip: 240, hold: 400, land: 320, gap: 90 };
 
 const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -125,6 +125,7 @@ export class DealIntro {
     await el.animate([{ transform: `translate(${pile.left + pile.width / 2 - cx}px, ${pile.top + pile.height / 2 - cy}px) scale(${pile.width / w})`, opacity: 0.4 }, { transform: "none", opacity: 1 }],
       { duration: T.fly + 80, easing: "cubic-bezier(.22,1,.36,1)", fill: "both" }).finished;
     if (!alive()) { el.remove(); return; }
+    await sleep(T.back);                                         // the card back is visible for a moment
     sfx.flip();
     el.classList.add("is-flipped");
     await sleep(T.flip + 900);                                   // time to read the stats
@@ -169,6 +170,7 @@ export class DealIntro {
     if (!alive()) { items.forEach(it => it.el.remove()); return; }
 
     // 2. turn face up
+    await sleep(T.back);
     sfx.flip();
     items.forEach(it => it.el.classList.add("is-flipped"));
     await sleep(T.flip + T.hold);
