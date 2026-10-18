@@ -218,7 +218,7 @@ def test_physical_keyboard_works_without_opening_the_pad(page, base_url):
     right = _correct(page)
     typed = str(right)
     for ch in typed:
-        page.keyboard.press("Minus" if ch == "-" else ch)
+        page.keyboard.press("Shift+Minus" if ch == "-" else ch)       # Shift+minus flips the sign
     expect(page.locator("[data-value]")).to_have_text(typed.replace("-", "\u2212"))
     page.keyboard.press("ArrowUp"); page.keyboard.press("ArrowDown")      # +1 / -1 steps
     expect(page.locator("[data-value]")).to_have_text(typed.replace("-", "\u2212"))

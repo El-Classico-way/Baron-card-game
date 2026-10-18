@@ -170,15 +170,20 @@
 
 .vy-table { padding: 0 12px; display: flex; flex-direction: column; gap: 12px; }
 .vy-piles { display: flex; justify-content: space-between; gap: 6px; }
-.vy-pile { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.vy-pile { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; min-width: 0; background: none; border: 0; padding: 4px 0; color: inherit; font: inherit; cursor: pointer; border-radius: 10px; }
+.vy-pile:hover:not(:disabled) { background: rgba(255,255,255,.05); }
+.vy-pile:disabled { cursor: default; opacity: .5; }
 .vy-pile .vc { --vc-w: min(18vw, 78px); }
 .vy-pile__stack .vc { box-shadow: 3px 3px 0 rgba(0,0,0,.4), 6px 6px 0 rgba(0,0,0,.25); }
 .vy-pile__label { font-size: .75rem; color: var(--text-dim); text-align: center; }
 .vy-pile__label b { color: var(--text); font-variant-numeric: tabular-nums; }
-.vy-drawn { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.vy-drawn__label { font-size: .75rem; text-transform: uppercase; letter-spacing: .12em; color: var(--text-dim); }
-.vy-drawn__cards { display: flex; gap: 10px; }
-.vy-drawn .vc { --vc-w: min(20vw, 80px); }
+.vy-drawn { display: flex; align-items: center; justify-content: center; gap: 16px; }
+.vy-drawn__deck { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.vy-drawn .vc { --vc-w: min(20vw, 78px); }
+.vy-drinks-left { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 14px; font-size: .8rem; }
+.vy-drinks-left li { display: flex; align-items: center; gap: 6px; }
+.vy-drinks-left span { flex: 1; color: var(--text-dim); }
+.vy-drinks-left b { font-variant-numeric: tabular-nums; }
 
 .vy-me { display: flex; gap: 14px; align-items: flex-start; padding: 0 12px; cursor: pointer; }
 .vy-me .vc { --vc-w: min(44vw, 170px); }
@@ -295,9 +300,15 @@
 @media (min-width: 900px) {
   /* The scroll container itself stays full-width so the wheel works anywhere on the screen;
      only its content is centred. */
-  .vy-scroll { padding: 14px max(0px, calc((100% - 980px) / 2)) 24px; }
-  .vc--hand { --vc-w: 136px; }
-  .vy-pile .vc { --vc-w: 92px; }
+  .vy-scroll { padding: 14px max(0px, calc((100% - 1240px) / 2)) 24px; }
+  .vc--hand { --vc-w: 172px; }
+  .vy-me .vc { --vc-w: 220px; }
+  .vy-pile .vc, .vy-drawn .vc { --vc-w: 104px; }
+  .vc--mini { --vc-w: 128px; }
+  .vc--big, .inspector__card--custom .vc--big { --vc-w: min(40vw, 400px, 64dvh); }
+  .vm-mine__cards .vc { --vc-w: 150px; }
+  .vr__slot .vc { --vc-w: 120px; }
+  .vy-drinks-left { font-size: .95rem; }
 }
 @media (max-height: 500px) and (orientation: landscape) {
   .vc--hand { --vc-w: 100px; }
@@ -436,10 +447,11 @@
 .di__spot { width: min(36vw, 150px); aspect-ratio: 5 / 7; border-radius: 12px; border: 2px dashed var(--line); }
 
 .di__card { position: fixed; perspective: 900px; pointer-events: none; z-index: 2; }
-.di__inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transform: rotateY(180deg); transition: transform .24s ease-in-out; }
-.di__card.is-flipped .di__inner { transform: rotateY(0); }
-.di__face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
-.di__face--back { transform: rotateY(180deg); }
+.di__inner { position: relative; width: 100%; height: 100%; }
+.di__face { position: absolute; inset: 0; }
+.di__face--front { display: none; }
+.di__card.is-flipped .di__face--front { display: block; }
+.di__card.is-flipped .di__face--back { display: none; }
 .di__card .vc { --vc-w: var(--di-w); width: var(--di-w); }
 
 .vy-slot.is-undealt, .vy-me__card.is-undealt { visibility: hidden; }
@@ -475,10 +487,10 @@ body.static-preview #join-form { display: none; }
 /* ---------- 7. "<Jméno> je Baron!" ---------------------------------- */
 
 .bs { position: fixed; inset: 0; z-index: 420; display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, rgba(40, 70, 40, .96), rgba(4, 12, 8, .98)); overflow: hidden; padding: 20px; }
-.bs__rays { position: absolute; inset: -50%; background: repeating-conic-gradient(from 0deg, rgba(224, 176, 76, .16) 0 9deg, transparent 9deg 18deg); animation: bs-spin 24s linear infinite; }
+.bs__rays { position: absolute; left: 50%; top: 50%; width: 100vmin; height: 100vmin; margin: -50vmin 0 0 -50vmin; -webkit-mask-image: radial-gradient(circle, #000 35%, transparent 72%); mask-image: radial-gradient(circle, #000 35%, transparent 72%); background: repeating-conic-gradient(from 0deg, rgba(224, 176, 76, .16) 0deg, rgba(224, 176, 76, .16) 7deg, transparent 10deg, transparent 15deg, rgba(224, 176, 76, .16) 18deg); will-change: transform; backface-visibility: hidden; animation: bs-spin 24s linear infinite; }   /* own compositor layer, only rotated, never repainted; kept small and faded out because a screen-sized rotating layer costs too much without a GPU */
 @keyframes bs-spin { to { transform: rotate(360deg); } }
 .bs__confetti { position: absolute; inset: 0; pointer-events: none; }
-.bs__bit { position: absolute; top: -12px; width: 9px; height: 16px; border-radius: 2px; opacity: .9; animation: bs-fall linear infinite; }
+.bs__bit { will-change: transform; position: absolute; top: -12px; width: 9px; height: 16px; border-radius: 2px; opacity: .9; animation: bs-fall linear infinite; }
 @keyframes bs-fall { to { transform: translateY(110vh) rotate(540deg); } }
 .bs__card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; max-width: 520px; animation: bs-in .7s cubic-bezier(.2, 1.4, .4, 1) both; }
 @keyframes bs-in { from { transform: scale(.4) rotate(-6deg); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -494,3 +506,23 @@ body.static-preview #join-form { display: none; }
 .is-static *, .is-static *::before, .is-static *::after { animation: none !important; transition: none !important; }
 .vr__foot { display: grid; gap: 8px; }
 .vr__foot .btn:disabled { opacity: .45; }
+
+/* Own cards under the counting table */
+.vr__mine { display: flex; justify-content: center; gap: 8px; margin: 10px 0 4px; }
+.vr__mine-card { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.vr__mine-card figcaption { font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--text-dim); }
+.vr__mine .vc--mini { --vc-w: min(29vw, 112px); }
+.vr__mine .vc-stat { transition: none; }
+.vr__mine .vc-stat.is-hot { outline: 2px solid var(--gold-light); outline-offset: 1px; background: color-mix(in srgb, var(--gold-light) 28%, transparent); }
+@media (min-width: 900px) { .vr__mine .vc--mini { --vc-w: 150px; } }
+
+/* Reordering the planned pairs by dragging */
+.vm-grab { flex: none; cursor: grab; touch-action: none; user-select: none; padding: 0 4px; color: var(--text-dim); font-size: 1.2rem; line-height: 1; }
+.vm-plan__list.is-reordering li { transition: transform .12s ease; }
+.vm-plan__list li.is-dragging { transition: none; z-index: 2; position: relative; box-shadow: 0 6px 18px rgba(0, 0, 0, .5); background: var(--surface-2); cursor: grabbing; }
+.vm-bannerrow { display: flex; align-items: center; gap: 8px; padding-right: 12px; }
+.vm-bannerrow .vm-banner { flex: 1; }
+
+/* Big (inspected) character card: room for the full drink names */
+.vc--big .vc__stats--10 .vc-stat { font-size: .6em; }
+@media (min-width: 900px) { .vy-piles { max-width: 640px; width: 100%; margin: 0 auto; } }

@@ -11,7 +11,7 @@
 
 import { bus } from "../core/events.js";
 import {
-  cardBack, cardFront, cardMeta, characterFront, existenceFront, locationFront, drinkFront,
+  cardBack, cardFront, cardMeta, characterFront, existenceFront, locationFront, drinkFront, DRINKS,
 } from "./cards.js";
 import { ResultOverlay } from "./result-overlay.js";
 import { getSettings, updateSettings, SPEED_LABELS } from "./settings.js";
@@ -78,6 +78,12 @@ export class VydrzView {
 
   _wire() {
     const { locs, exs, players, bar, sheet, settings } = this._el;
+
+    this._el.piles.addEventListener("click", (e) => {
+      const pile = e.target.closest("[data-pile]");
+      const cards = pile && this._state?.decks_cards?.[pile.dataset.pile];
+      if (cards?.length) this._inspectCards(cards, cards[0].uid);
+    });
 
     for (const [container, kind] of [[locs, "lokace"], [exs, "existence"]]) {
       container.addEventListener("click", (e) => {
@@ -232,7 +238,7 @@ export class VydrzView {
   }
 
   _resultCtx() {
-    return { names: this._names(), isHost: this.isHost(), myId: this._state.you };
+    return { names: this._names(), isHost: this.isHost(), myId: this._state.you, character: this._me()?.character };
   }
 
   _reopenResult() {
@@ -274,22 +280,24 @@ export class VydrzView {
   }
 
   _renderTable() {
-    const d = this._state.decks;
+    const s = this._state, d = s.decks;
     this._el.piles.innerHTML = [
       ["postava", "Postavy", d.postava],
-      ["chlast", "Chlast", d.chlast],
       ["lokace", "Lokace", d.lokace],
       ["existence", "Existence", d.existence],
     ].map(([kind, label, n]) => `
-      <div class="vy-pile" data-pile="${kind}">
-        <div class="vy-pile__stack">${cardBack(kind)}</div>
+      <button class="vy-pile" type="button" data-pile="${kind}" ${n ? "" : "disabled"} aria-label="Prohlédnout balíček: ${label}">
+        <span class="vy-pile__stack">${cardBack(kind)}</span>
         <span class="vy-pile__label">${label} <b>${n}</b></span>
-      </div>`).join("");
+      </button>`).join("");
 
-    const r = this._state.last_result;
-    const drawn = r && this._state.phase !== "choosing" ? r.drawn.map(x => x.drink) : [];
-    this._el.drawn.innerHTML = `<span class="vy-drawn__label">Vytažený chlast</span><div class="vy-drawn__cards">` +
-      [0, 1, 2].map(i => drawn[i] ? drinkFront(drawn[i]) : cardBack("chlast")).join("") + `</div>`;
+    // The drink deck is one card with the counts per kind; it cannot be inspected.
+    const left = s.drinks_left ?? {};
+    this._el.drawn.innerHTML = `
+      <div class="vy-drawn__deck"><span class="vy-pile__stack">${cardBack("chlast")}</span>
+        <span class="vy-pile__label">Chlast <b>${d.chlast}</b></span></div>
+      <ul class="vy-drinks-left" aria-label="Zbývající chlast podle druhu">${DRINKS.map(k =>
+        `<li data-drink="${k.id}"><i class="vc-dot" style="background:${k.color}"></i><span>${esc(k.name)}</span><b>${left[k.id] ?? 0}</b></li>`).join("")}</ul>`;
   }
 
   _renderMe() {

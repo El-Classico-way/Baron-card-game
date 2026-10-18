@@ -48,6 +48,9 @@ import { Controller }   from "./game/controller.js";
 import { Animator }     from "./game/animator.js";
 import { queryElements, on, debounce } from "./utils/dom.js";
 
+// Declared before boot() runs: boot() executes at import time and reads it.
+const DEMO_KEY = "baron.demo";
+
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
@@ -250,7 +253,7 @@ function _wireLobbyControls(elements, socket, store) {
     });
   }
 
-  on(document.getElementById("copy-link-btn"), "click", () => _shareInvite(store));
+  on(document.getElementById("copy-link-btn"), "click", () => _copyCode(store));
 
   // When the server transitions us to playing, show the game panel.
   bus.on("store:game_started", () => _showPanel(elements, "game"));
@@ -355,8 +358,6 @@ if (document.readyState === "loading") {
 // Mock mode, invite link, chat sheet, leave
 // ---------------------------------------------------------------------------
 
-const DEMO_KEY = "baron.demo";
-
 function _mockOptions() {
   const params = new URLSearchParams(location.search);
   if (params.has("mock")) {
@@ -369,20 +370,14 @@ function _mockOptions() {
   return null;
 }
 
-async function _shareInvite(store) {
+async function _copyCode(store) {
   const roomId = store.state.roomId;
   if (!roomId) return;
-  const url = `${location.origin}${location.pathname}?room=${encodeURIComponent(roomId)}`;
   try {
-    if (navigator.share) {
-      await navigator.share({ title: "Připoj se do mé hry", url });
-      return;
-    }
-    await navigator.clipboard.writeText(url);
-    bus.emit("store:notification", { message: "Pozvánka zkopírována", type: "success", id: Date.now() });
-  } catch (err) {
-    if (err?.name === "AbortError") return;   // user dismissed the share sheet
-    window.prompt("Zkopíruj tuto pozvánku:", url);
+    await navigator.clipboard.writeText(roomId);
+    bus.emit("store:notification", { message: "Kód zkopírován", type: "success", id: Date.now() });
+  } catch {
+    window.prompt("Zkopíruj kód místnosti:", roomId);      // clipboard unavailable (e.g. plain http)
   }
 }
 

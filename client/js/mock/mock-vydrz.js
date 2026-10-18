@@ -46,6 +46,13 @@ export class MockVydrz {
     }
     const ex = shuffle(DATA.existences);
     this.players.forEach((p, i) => { p.existences = ex.slice(i * 8, i * 8 + 8).map(e => ({ ...e, uid: `e-${e.id}`, kind: "existence" })); });
+    const dealt = new Set(this.players.flatMap(p => [p.character.uid, ...p.locations.map(l => l.uid), ...p.existences.map(e => e.uid)]));
+    const rest = (list, kind, prefix) => list.map(c => ({ ...c, uid: `${prefix}-${c.id}`, kind })).filter(c => !dealt.has(c.uid));
+    this._left = {
+      postava: rest(DATA.characters, "postava", "c"),
+      lokace: rest(DATA.locations, "lokace", "l"),
+      existence: rest(DATA.existences, "existence", "e"),
+    };
     this.deck = shuffle(DATA.drinks.flatMap(d => Array.from({ length: DATA.drink_copies }, () => d.id)));
     this.discard = [];
     this._scheduleBots();
@@ -169,6 +176,8 @@ export class MockVydrz {
       decks: { chlast: this.deck.length, chlast_discard: this.discard.length,
         lokace: 64 - 8 * this.players.length, existence: 64 - 8 * this.players.length,
         postava: DATA.characters.length - this.players.length },
+      decks_cards: this._left,
+      drinks_left: Object.fromEntries(DATA.drinks.map(d => [d.id, this.deck.filter(x => x === d.id).length])),
       last_result: visibleResult(this.last, this.announced), winner_announced: this.announced,
     };
   }

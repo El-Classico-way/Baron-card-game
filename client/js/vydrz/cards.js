@@ -59,7 +59,7 @@ function face(kind, card, inner, { extra = "", attrs = "" } = {}) {
 }
 
 export function characterFront(card, opts = {}) {
-  const stats = Object.entries(card.stats).map(([d, v]) => statChip(d, v, { short: true })).join("");
+  const stats = Object.entries(card.stats).map(([d, v]) => statChip(d, v, { short: !/vc--big/.test(opts.extra ?? "") })).join("");
   return face("postava", card, `
     <div class="vc__title">${esc(card.name)}</div>
     <div class="vc__photo" aria-hidden="true"><span class="vc__photo-mark">${esc(initials(card.name))}</span></div>

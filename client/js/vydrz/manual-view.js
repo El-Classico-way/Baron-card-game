@@ -59,6 +59,7 @@ export class ManualView {
     this._valueDraw = null;                // draw_id the value belongs to (reset on a new draw)
     this._fresh = true;                    // next typed digit replaces the value
     this._negPending = false;              // "-" typed before any digit (value is still 0)
+    this._resultHidden = false;            // the player closed the results table (✕) to see the base view
     this._splashed = false;                // the "je Baron!" announcement was shown
 
     const $ = (id) => document.getElementById(id);
@@ -76,6 +77,7 @@ export class ManualView {
     const wasLongPress = onLongPress(stage, ".vm-card[data-uid]", (el) => this._inspectNode(el));
     stage.addEventListener("click", (e) => {
       if (wasLongPress()) return;
+      if (e.target.closest("[data-close-result]")) { this._resultHidden = true; this.render(); return; }
       const step = e.target.closest("[data-step]");
       if (step) { this._step(parseInt(step.dataset.step, 10)); return; }
       if (e.target.closest("[data-numpad-open]")) { this._openNumpad(); return; }
@@ -91,6 +93,7 @@ export class ManualView {
       const el = e.target.closest(".vy-slot, .vm-card");
       if (el) { e.preventDefault(); this._inspectNode(el); }
     });
+    this._wireReorder(stage);
     players.addEventListener("click", (e) => {
       const chip = e.target.closest("[data-pid]");
       if (chip) this._openPlayerSheet(chip.dataset.pid);
@@ -102,6 +105,7 @@ export class ManualView {
       ({ add: () => this._addPair(), undo: () => this._undo(), confirm: () => this._confirmPlan(),
          edit: () => { this._editing = true; this.render(); },
          next: () => this._socket.send("vydrz_next_round"),
+         showresult: () => { this._resultHidden = false; this.render(); },
          announce: () => this._socket.send("vydrz_announce"),
          lobby: () => this._socket.send("return_to_lobby"),
          leave: () => this._onLeave() })[btn.dataset.act]?.();
@@ -109,6 +113,55 @@ export class ManualView {
     document.addEventListener("keydown", (e) => this._onKey(e));
     document.getElementById("vm-settings-btn")?.addEventListener("click", () => this._openSettings());
     document.getElementById("vm-leave-btn")?.addEventListener("click", () => this._confirmLeave());
+  }
+
+  /**
+   * Drag and drop (mouse and touch) to reorder the planned pairs: grab the ⠿ handle,
+   * the row follows the pointer and the others make room; releasing drops it there.
+   */
+  _wireReorder(stage) {
+    stage.addEventListener("pointerdown", (e) => {
+      const handle = e.target.closest(".vm-grab");
+      const row = handle?.closest("li[data-i]");
+      if (!row || this._planLocked() || e.button > 0) return;
+      e.preventDefault();
+      const list = row.parentElement;
+      const rows = [...list.querySelectorAll("li.is-set")];
+      const from = rows.indexOf(row);
+      const rects = rows.map(r => r.getBoundingClientRect());
+      const step = rects.length > 1 ? rects[1].top - rects[0].top : rects[0].height;
+      const startY = e.clientY;
+      let to = from;
+      handle.setPointerCapture?.(e.pointerId);
+      row.classList.add("is-dragging");
+      list.classList.add("is-reordering");
+      const move = (ev) => {
+        const dy = ev.clientY - startY;
+        const centre = rects[from].top + rects[from].height / 2 + dy;
+        const idx = rects.findIndex(r => centre < r.top + r.height);
+        to = idx === -1 ? rows.length - 1 : idx;
+        row.style.transform = `translateY(${dy}px)`;
+        rows.forEach((r, i) => {
+          if (r === row) return;
+          const shift = from < to && i > from && i <= to ? -step : from > to && i >= to && i < from ? step : 0;
+          r.style.transform = shift ? `translateY(${shift}px)` : "";
+        });
+      };
+      const end = (ev) => {
+        handle.removeEventListener("pointermove", move);
+        handle.removeEventListener("pointerup", end);
+        handle.removeEventListener("pointercancel", end);
+        if (ev.type === "pointerup" && to !== from) {
+          const [moved] = this._plan.splice(from, 1);
+          this._plan.splice(to, 0, moved);
+          sfx.pop();
+        }
+        this.render();
+      };
+      handle.addEventListener("pointermove", move);
+      handle.addEventListener("pointerup", end);
+      handle.addEventListener("pointercancel", end);
+    });
   }
 
   // ------------------------------------------------------------------- state
@@ -124,6 +177,7 @@ export class ManualView {
     const first = !this._state;                     // first state since the page loaded / the game began
     const prevPhase = this._state?.phase;
     const wasAnnounced = this._state?.winner_announced ?? false;
+    if (prevPhase !== state.phase || wasAnnounced !== state.winner_announced || state.round !== this._state?.round) this._resultHidden = false;
     this._state = state;
     ["join-panel", "lobby-panel", "game-panel", "vydrz-panel"].forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; });
     this._el.panel.hidden = false;
@@ -163,6 +217,7 @@ export class ManualView {
     this._dealt = false;
     this._dealing = false;
     this._splashed = false;
+    this._resultHidden = false;
     this._value = 0;
     this._el.sheet.hidden = true;
     this._el.panel.hidden = true;
@@ -212,7 +267,8 @@ export class ManualView {
     this._renderPlayers();
     this._el.stage.innerHTML = ({
       planning: () => this._stagePlanning(), calculating: () => this._stageCalculating(),
-      reveal: () => this._stageReveal(), finished: () => this._stageFinal(),
+      reveal: () => this._showsResult() ? this._stageReveal() : this._stageBase(),
+      finished: () => this._showsResult() ? this._stageFinal() : this._stageBase(),
     })[s.phase]?.() ?? "";
     this._renderBar();
     this._paintDrinks();
@@ -255,7 +311,7 @@ export class ManualView {
     const rows = Array.from({ length: this._state.rounds_total }, (_, i) => {
       const pair = this._plan[i];
       return pair
-        ? `<li class="is-set"><span class="vm-n">${i + 1}</span><span class="vm-plan__loc">${esc(byUid[pair.location_uid].name)} <b>(${byUid[pair.location_uid].number})</b></span><span class="vm-plan__ex">${esc(byUid[pair.existence_uid].name)}</span></li>`
+        ? `<li class="is-set${this._planLocked() ? "" : " is-draggable"}" data-i="${i}">${this._planLocked() ? "" : `<span class="vm-grab" aria-label="Přetáhni pro změnu pořadí" title="Přetáhni pro změnu pořadí">⠿</span>`}<span class="vm-n">${i + 1}</span><span class="vm-plan__loc">${esc(byUid[pair.location_uid].name)} <b>(${byUid[pair.location_uid].number})</b></span><span class="vm-plan__ex">${esc(byUid[pair.existence_uid].name)}</span></li>`
         : `<li><span class="vm-n">${i + 1}</span><span class="vm-plan__empty">—</span></li>`;
     }).join("");
 
@@ -453,8 +509,10 @@ export class ManualView {
       const next = Math.min(MAX_VALUE, mag * 10 + parseInt(k, 10));
       this._value = neg ? -next : next;
       this._fresh = false;
-    } else if (k === "-" || k === "_") {
-      if (this._value === 0) this._negPending = !this._negPending;     // "-" first, digits after
+    } else if (k === "-") {
+      this._step(-1); e.preventDefault(); return;                       // like the − button
+    } else if (k === "_") {                                              // Shift+minus: flip the sign, so negative numbers can be typed
+      if (this._value === 0) this._negPending = !this._negPending;
       else this._value = -this._value;
       this._fresh = false;
     } else if (k === "Backspace") {
@@ -490,6 +548,21 @@ export class ManualView {
       `${esc(names[pid] ?? pid)} <b>${signed(t.value)}</b>${t.tag ? ` ${this._tag(t.tag)}` : ""}`).join(" · ")}</p>`).join("");
   }
 
+  _showsResult() { return !this._resultHidden; }
+
+  /** The base view while a result is closed: your character and the cards you still have. */
+  _stageBase() {
+    const me = this._me();
+    const hand = (cards, label, front) => `<section class="vy-hand-sec"><h3>${label} (${cards.length})</h3><div class="vy-hand">${
+      cards.map(c => `<div class="vy-slot is-locked">${front(c, { extra: "vc--hand vm-card" })}</div>`).join("") || `<p class="vy-empty">Žádné karty.</p>`}</div></section>`;
+    return `
+      <section class="vm-me"><div class="vm-char">${characterFront(me.character, { extra: "vc--mini vm-card" })}</div>
+        <div class="vm-me__text"><h3>${esc(me.display_name)}</h3><p>Tvoje postava. Klepnutím ji zvětšíš.</p>
+          ${me.won.length ? `<p class="vy-me__won">Získané lokace: ${me.won.map(l => `<b>${l.number}</b>`).join(" ")}</p>` : ""}</div></section>
+      ${hand(me.locations, "Lokace", locationFront)}
+      ${hand(me.existences, "Existence", existenceFront)}`;
+  }
+
   _stageReveal() {
     const r = this._state.last_result;
     if (!r) return "";
@@ -498,7 +571,7 @@ export class ManualView {
       ? `<b>${esc(names[r.winner_id])}</b> bere lokaci <b>${esc(r.picks[r.winner_id].lokace.name)}</b> a získává <b class="vr__plus">+${r.awarded}</b> b.`
       : "Remíza se nepodařilo rozhodnout. Lokaci nikdo nezíská.";
     return `
-      <h2 class="vm-banner">Kolo ${r.round}: výsledek</h2>
+      <div class="vm-bannerrow"><h2 class="vm-banner">Kolo ${r.round}: výsledek</h2><button class="hud__btn" type="button" data-close-result aria-label="Skrýt výsledek">✕</button></div>
       <section class="vm-drinks"><h3>Vytažený chlast</h3><div class="vm-drinks__cards vm-drinks__cards--done">${r.drawn.map(d => `<div class="vm-drink">${drinkFront(d)}</div>`).join("")}</div></section>
       <section class="vm-table"><h3>Výsledky</h3>${this._resultTable(r)}${this._tiebreakNotes(r.tiebreak)}</section>
       <div class="vr__outcome">${win}</div>`;
@@ -511,7 +584,7 @@ export class ManualView {
     const names = this._names();
     const label = (pid) => (pid === f.winner_id ? "Vítěz" : pid === f.loser_id ? "Poražený" : "");
     return `
-      <h2 class="vm-banner">Konec hry</h2>
+      <div class="vm-bannerrow"><h2 class="vm-banner">Konec hry</h2><button class="hud__btn" type="button" data-close-result aria-label="Skrýt výsledek">✕</button></div>
       <ol class="vr__ranking">${f.ranking.map(x => `<li class="${x.player_id === f.winner_id ? "is-winner" : x.player_id === f.loser_id ? "is-loser" : ""}">
         <span class="vr__place">${x.place}.</span><span class="vr__rname">${esc(names[x.player_id] ?? x.player_id)}</span><b>${x.score} b.</b><em>${label(x.player_id)}</em></li>`).join("")}</ol>
       ${this._tiebreakNotes(f.tiebreak_first)}${this._tiebreakNotes(f.tiebreak_last)}
@@ -548,6 +621,9 @@ export class ManualView {
       html = `<button class="btn btn--block" data-act="leave" type="button">Opustit hru</button>
         <button class="btn btn--block btn--ghost" data-act="lobby" type="button" ${host ? "" : "disabled"}>Zpět do lobby</button>
         ${host ? "" : `<p class="vr__waiting">Do lobby vrací všechny host.</p>`}`;
+    }
+    if ((s.phase === "reveal" || s.phase === "finished") && this._resultHidden) {
+      html = `<button class="btn btn--ghost btn--block" data-act="showresult" type="button">Zobrazit výsledek kola</button>` + html;
     }
     this._el.bar.innerHTML = html;
   }

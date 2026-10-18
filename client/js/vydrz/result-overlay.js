@@ -14,7 +14,7 @@
  * final state, which is rendered by the same code with zero delays.
  */
 
-import { drinkFront, cardBack, drinkInfo, fmtStat } from "./cards.js";
+import { drinkFront, cardBack, drinkInfo, fmtStat, characterFront, locationFront, existenceFront } from "./cards.js";
 import * as realSfx from "./sound.js";
 import { showBaronSplash } from "./winner-splash.js";
 import { getSettings, SPEED_FACTOR } from "./settings.js";
@@ -99,6 +99,7 @@ export class ResultOverlay {
 
       for (const src of SOURCES) {
         this._markColumn(src);
+        this._markMine(src, row.drink);
         let maxPos = 0, anyNeg = false;
         for (const [pid, c] of Object.entries(row.players)) {
           const v = c[src];
@@ -115,6 +116,7 @@ export class ResultOverlay {
         await wait(430); if (!alive()) return;
       }
       this._markColumn(null);
+      this._markMine(null);
       await wait(380); if (!alive()) return;
     }
     this._clearCells();
@@ -205,6 +207,7 @@ export class ResultOverlay {
           <div class="vr__cols"><span></span>${SOURCES.map(s => `<span data-col="${s}">${SOURCE_LABEL[s]}</span>`).join("")}<span>Σ</span></div>
           ${rows}
         </div>
+        ${this._mine(result, ctx)}
         <div class="vr__tie" hidden></div>
         <div class="vr__outcome" hidden></div>
         <div class="vr__scores" hidden></div>
@@ -214,6 +217,24 @@ export class ResultOverlay {
     this._root.setAttribute("aria-labelledby", "vr-title");
     this._q(".vr__close").addEventListener("click", () => this.close());
     this._q(".vr__backdrop").addEventListener("click", () => this.close());
+  }
+
+  /** Your own character and this round's pair, so you can see what added or took points. */
+  _mine(result, ctx) {
+    const pick = result.picks[ctx.myId];
+    if (!pick || !ctx.character) return "";
+    const card = (src, label, html) => `<figure class="vr__mine-card" data-src="${src}"><figcaption>${label}</figcaption>${html}</figure>`;
+    return `<section class="vr__mine" aria-label="Tvoje karty v tomto kole">
+      ${card("postava", "Postava", characterFront(ctx.character, { extra: "vc--mini" }))}
+      ${card("lokace", "Lokace", locationFront(pick.lokace, { extra: "vc--mini" }))}
+      ${card("existence", "Existence", existenceFront(pick.existence, { extra: "vc--mini" }))}
+    </section>`;
+  }
+
+  _markMine(src, drink) {
+    this._root.querySelectorAll(".vr__mine .vc-stat.is-hot").forEach(el => el.classList.remove("is-hot"));
+    if (!src) return;
+    this._root.querySelector(`.vr__mine-card[data-src="${src}"] .vc-stat[data-drink="${drink}"]`)?.classList.add("is-hot");
   }
 
   _q(sel) { return this._root.querySelector(sel); }
