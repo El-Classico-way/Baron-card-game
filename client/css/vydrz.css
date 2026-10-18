@@ -306,9 +306,6 @@
   .vy-pile .vc, .vy-drawn .vc { --vc-w: 104px; }
   .vc--mini { --vc-w: 128px; }
   .vc--big, .inspector__card--custom .vc--big { --vc-w: min(40vw, 400px, 64dvh); }
-  .vm-mine__cards .vc { --vc-w: 200px; }
-  .vm-drink .vc { --vc-w: 130px; }
-  .vm-char .vc { --vc-w: 200px; }
   /* A mouse has no swipe: show the whole hand instead of a sideways scroller. */
   .vy-hand { flex-wrap: wrap; justify-content: center; overflow-x: visible; scroll-snap-type: none; }
   .vr__slot .vc { --vc-w: 120px; }
@@ -539,3 +536,10 @@ body.static-preview #join-form { display: none; }
 .vm-pcard.is-lifted { opacity: .35; }
 .vm-pcard.is-target { outline: 2px solid var(--gold-light); background: color-mix(in srgb, var(--gold-light) 20%, transparent); }
 .vm-ghost { position: fixed; left: 0; top: 0; z-index: 400; pointer-events: none; padding: 6px 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--gold-light); box-shadow: 0 6px 18px rgba(0, 0, 0, .5); font-weight: 700; white-space: nowrap; }
+
+/* Desktop sizes for the manual variant (last, so they beat the phone-sized rules above) */
+@media (min-width: 900px) {
+  .vm-mine__cards .vc { --vc-w: 200px; }
+  .vm-drink .vc { --vc-w: 130px; }
+  .vm-char .vc { --vc-w: 200px; }
+}

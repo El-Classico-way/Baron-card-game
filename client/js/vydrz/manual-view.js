@@ -214,8 +214,10 @@ export class ManualView {
           [this._plan[from][key], this._plan[to][key]] = [this._plan[to][key], this._plan[from][key]];
           sfx.pop();
         }
-        if (ghost) { this._justDragged = true; setTimeout(() => { this._justDragged = false; }, 0); }
-        this.render();
+        if (ghost) {                                        // (a plain tap must not re-render: it would swallow the click)
+          this._justDragged = true; setTimeout(() => { this._justDragged = false; }, 0);
+          this.render();
+        }
       };
       const move = (ev) => {
         if (!ghost) {
