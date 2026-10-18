@@ -629,7 +629,7 @@ body.is-targeting .opponent[data-player-id]:not(.opponent--dead) {
 
 /* Phones held sideways: very little height, so shrink everything vertical */
 @media (max-height: 500px) and (orientation: landscape) {
-  :root { --card-w: 58px; --tap: 46px; }
+  :root { --card-w: 64px; --tap: 46px; }
   #game-panel {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr) auto;
