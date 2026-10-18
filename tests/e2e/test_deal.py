@@ -1,4 +1,6 @@
 """Opening deal (both Výdrž variants): the 16 cards are revealed pair by pair."""
+import re
+
 import pytest
 from playwright.sync_api import expect
 
@@ -26,7 +28,11 @@ def _landed(page, locs, exs):
 def test_cards_are_dealt_one_pair_at_a_time(dealt_page):
     page, panel, locs, exs = dealt_page
     expect(page.locator("#deal-intro")).to_be_visible(timeout=10000)
-    expect(page.locator(".di__pile")).to_have_count(2)                   # the decks are on screen
+    expect(page.locator(".di__pile")).to_have_count(3)                   # character, location and existence decks are on screen
+    expect(page.locator(".di__count")).to_have_text("Tvoje postava")      # the character is assigned first
+    expect(page.locator(".di__caption")).not_to_be_empty()                # ... and named
+    char_slot = page.locator(".vy-me__card, .vm-char").first
+    expect(char_slot).to_have_class(re.compile(r"is-undealt"))            # hidden until it lands
 
     counts, max_on_screen, seen = set(), 0, set()
     for _ in range(80):                                                  # sample the animation
@@ -45,6 +51,7 @@ def test_cards_are_dealt_one_pair_at_a_time(dealt_page):
     assert page.locator(locs).count() == 8 and page.locator(exs).count() == 8
     assert _landed(page, locs, exs) == 16                                # all 16 are in the hand
     assert page.locator(".is-undealt").count() == 0
+    assert page.locator(".vy-me__card.is-undealt, .vm-char.is-undealt").count() == 0     # the character landed too
     assert not page.js_errors
 
 
@@ -54,6 +61,7 @@ def test_skip_deals_everything_at_once(dealt_page):
     page.click(".di__skip")
     expect(page.locator("#deal-intro")).to_be_hidden(timeout=5000)
     assert _landed(page, locs, exs) == 16
+    assert page.locator(".vy-me__card.is-undealt, .vm-char.is-undealt").count() == 0
     expect(page.locator(panel)).to_be_visible()
 
 

@@ -1,8 +1,9 @@
 /**
  * client/js/vydrz/deal-intro.js
  *
- * The opening deal, shared by both Výdrž variants. The player's 16 cards are
- * revealed pair by pair (one location + one existence): a pair flies from the
+ * The opening deal, shared by both Výdrž variants. First the player's character
+ * is assigned (it flies from the character deck to the middle, turns over and
+ * lands in its place), then the 16 cards are revealed pair by pair (one location + one existence): a pair flies from the
  * decks to the middle of the screen, turns face up so it can be read, then
  * flies into the hand. The next pair only starts when the previous one has
  * landed, so a new pair is always the thing on screen.
@@ -30,18 +31,21 @@ export class DealIntro {
 
   /**
    * @param {{
+   *   character?: object,
+   *   getCharSlot?: () => HTMLElement|null,
+   *   onLandChar?: () => void,
    *   pairs: { lokace: object, existence: object }[],
-   *   counts: { lokace: number, existence: number },
+   *   counts: { postava?: number, lokace: number, existence: number },
    *   getSlot: (kind: "lokace"|"existence", uid: string) => HTMLElement|null,
    *   onLand: (uid: string) => void,
    *   prepare?: () => void,
    * }} opts
    * @returns {Promise<void>} resolves when everything has landed (or was skipped)
    */
-  async play({ pairs, counts, getSlot, onLand, prepare }) {
+  async play({ character, getCharSlot, onLandChar, pairs, counts, getSlot, onLand, prepare }) {
     const token = ++this._token;
     this._skip = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const landAll = () => pairs.forEach(p => { onLand(p.lokace.uid); onLand(p.existence.uid); });
+    const landAll = () => { onLandChar?.(); pairs.forEach(p => { onLand(p.lokace.uid); onLand(p.existence.uid); }); };
     if (this._skip) { landAll(); return; }
 
     prepare?.();                                  // e.g. scroll the hands into view
@@ -51,6 +55,10 @@ export class DealIntro {
     const alive = () => token === this._token && !this._skip;
 
     await sleep(150);
+    if (character && alive()) {
+      this._q(".di__count").textContent = "Tvoje postava";
+      await this._dealCharacter(character, getCharSlot, onLandChar, alive);
+    }
     for (let i = 0; i < pairs.length && alive(); i++) {
       this._q(".di__count").textContent = `Dvojice ${i + 1} / ${pairs.length}`;
       await this._dealPair(pairs[i], getSlot, onLand, alive);
@@ -81,10 +89,11 @@ export class DealIntro {
           <button class="btn btn--ghost btn--small di__skip" type="button">Přeskočit</button>
         </header>
         <div class="di__piles">
-          ${["lokace", "existence"].map(k => `<div class="di__pile" data-pile="${k}">
-            <div class="di__pilecard">${cardBack(k)}</div><span>${k === "lokace" ? "Lokace" : "Existence"} <b>${counts[k]}</b></span></div>`).join("")}
+          ${[["postava", "Postavy"], ["lokace", "Lokace"], ["existence", "Existence"]].map(([k, label]) => `<div class="di__pile" data-pile="${k}">
+            <div class="di__pilecard">${cardBack(k)}</div><span>${label}${counts[k] != null ? ` <b>${counts[k]}</b>` : ""}</span></div>`).join("")}
         </div>
         <div class="di__stage"><div class="di__spot" data-spot="lokace"></div><div class="di__spot" data-spot="existence"></div></div>
+        <p class="di__caption" aria-live="polite"></p>
       </div>`;
     this._root.setAttribute("aria-labelledby", "di-title");
     const skip = () => { this._skip = true; };
@@ -100,6 +109,38 @@ export class DealIntro {
       <div class="di__face di__face--front">${cardFront(card)}</div></div>`;
     this._root.appendChild(el);
     return el;
+  }
+
+  /** Assign the player's character: deck -> middle -> turn over -> into its place. */
+  async _dealCharacter(card, getCharSlot, onLandChar, alive) {
+    const stage = this._q(".di__stage").getBoundingClientRect();
+    const w = Math.min(window.innerWidth * 0.5, 190), h = w * 1.4;
+    const pile = this._q('[data-pile="postava"] .vc').getBoundingClientRect();
+    const cx = stage.left + stage.width / 2, cy = stage.top + stage.height / 2;
+    const el = this._make("postava", card, w);
+    Object.assign(el.style, { left: `${cx - w / 2}px`, top: `${cy - h / 2}px`, width: `${w}px`, height: `${h}px` });
+    this._q(".di__caption").textContent = card.name;
+
+    sfx.pop();
+    await el.animate([{ transform: `translate(${pile.left + pile.width / 2 - cx}px, ${pile.top + pile.height / 2 - cy}px) scale(${pile.width / w})`, opacity: 0.4 }, { transform: "none", opacity: 1 }],
+      { duration: T.fly + 80, easing: "cubic-bezier(.22,1,.36,1)", fill: "both" }).finished;
+    if (!alive()) { el.remove(); return; }
+    sfx.flip();
+    el.classList.add("is-flipped");
+    await sleep(T.flip + 900);                                   // time to read the stats
+    if (!alive()) { el.remove(); return; }
+
+    const slot = getCharSlot?.();
+    if (slot) {
+      const to = slot.getBoundingClientRect();
+      await el.animate([{ transform: "none" }, { transform: `translate(${to.left + to.width / 2 - cx}px, ${to.top + to.height / 2 - cy}px) scale(${to.width / w})` }],
+        { duration: T.land + 60, easing: "cubic-bezier(.5,0,.75,0)", fill: "forwards" }).finished;
+    }
+    onLandChar?.();
+    el.remove();
+    this._q(".di__caption").textContent = "";
+    sfx.pop();
+    await sleep(T.gap);
   }
 
   async _dealPair(pair, getSlot, onLand, alive) {

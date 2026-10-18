@@ -218,3 +218,55 @@ def test_automatic_engine_is_unchanged_by_the_manual_one():
     m = ManualVydrzGame(ids, CONTENT, seed=9); m.start()
     assert [p.character.id for p in a.players] == [p.character.id for p in m.players]
     assert [l.id for l in a.players[0].locations] == [l.id for l in m.players[0].locations]
+
+
+# --- waiting for every player ------------------------------------------------
+
+def test_planning_waits_for_every_player():
+    g = make(4)
+    for p in g.players[:3]:
+        g.action_set_plan(p.player_id, [(l.uid, e.uid) for l, e in zip(p.locations, p.existences)])
+        assert g.phase == Phase.PLANNING                      # not before the last plan
+    p = g.players[3]
+    g.action_set_plan(p.player_id, [(l.uid, e.uid) for l, e in zip(p.locations, p.existences)])
+    assert g.phase == Phase.CALCULATING
+
+
+def test_round_waits_for_every_number():
+    g = make(4)
+    plan_in_hand_order(g)
+    for pid in ("p1", "p2", "p3"):
+        g.action_submit(pid, correct_for(g, pid))
+        assert g.phase == Phase.CALCULATING and g.last_result is None
+    g.action_submit("p4", correct_for(g, "p4"))
+    assert g.last_result is not None
+
+
+def test_tiebreak_waits_for_every_tied_player():
+    g = make(3, seed=3)
+    plan_in_hand_order(g)
+    for pid in ("p1", "p2", "p3"):
+        g._calc.correct[pid] = 5                              # force a three-way tie
+    for pid in ("p1", "p2", "p3"):
+        g.action_submit(pid, 5)
+    assert g._calc.is_tiebreak and set(g._calc.participants) == {"p1", "p2", "p3"}
+    g.action_submit("p1", g._calc.correct["p1"])
+    g.action_submit("p2", g._calc.correct["p2"])
+    assert g._calc is not None and not g._calc.entries.get("p3")   # still waiting for p3
+
+
+# --- a player who leaves never blocks the others -----------------------------
+
+def test_leaving_player_is_planned_and_answered_automatically():
+    g = make(3, seed=6)
+    a, b, gone = g.players
+    for p in (a, b):
+        g.action_set_plan(p.player_id, [(l.uid, e.uid) for l, e in zip(p.locations, p.existences)])
+    assert g.phase == Phase.PLANNING
+    g.mark_away(gone.player_id)                               # the last missing plan
+    assert g.phase == Phase.CALCULATING
+    g.action_submit("p1", correct_for(g, "p1"))
+    assert g.phase == Phase.CALCULATING                       # still waits for p2, not for the leaver
+    g.action_submit("p2", correct_for(g, "p2"))
+    assert g.phase in (Phase.REVEAL, Phase.CALCULATING)       # the leaver answered by itself
+    assert g.snapshot("p1")["players"][2]["away"] is True

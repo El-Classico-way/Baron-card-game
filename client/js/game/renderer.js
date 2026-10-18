@@ -342,6 +342,8 @@ export class Renderer {
       vs.innerHTML = variants.map(m => `<button class="seg__btn${m.id === lobby.mode ? " is-on" : ""}" type="button" role="radio"
           aria-checked="${m.id === lobby.mode}" data-mode="${_esc(m.id)}" ${!isHost ? "disabled" : ""}>${_esc(m.variant)}</button>`).join("");
     }
+    const note = document.getElementById("mode-note");
+    if (note) note.hidden = isHost;                  // only the room's creator changes these
     const hint = document.getElementById("variant-hint");
     if (hint) hint.textContent = lobby.mode === "vydrz_rucne"
       ? "Všech 8 dvojic si naplánuješ předem a každé kolo si čísla spočítáš sám(a)."

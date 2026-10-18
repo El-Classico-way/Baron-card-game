@@ -22,15 +22,17 @@ const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").
 
 export class VydrzView {
   /**
-   * @param {{ socket, inspector, dealIntro, getHostId: () => string|null, onLeave: () => void }} deps
+   * @param {{ socket, inspector, dealIntro, getHostId: () => string|null, onLeave: () => void, onConfirmLeave?: () => void }} deps
    */
-  constructor({ socket, inspector, dealIntro, getHostId, onLeave }) {
+  constructor({ socket, inspector, dealIntro, getHostId, onLeave, onConfirmLeave }) {
     this._socket = socket;
     this._inspector = inspector;
     this._dealIntro = dealIntro;
     this._dealing = false;                             // opening deal in progress
     this._dealtUids = new Set();                       // cards that have landed in the hand
+    this._charLanded = true;                           // false while the character card is being assigned
     this._onLeave = onLeave;
+    this._confirmLeave = onConfirmLeave ?? (() => onLeave());
     this._getHostId = getHostId;
     this._changing = false;                            // player reopened their confirmed pick
     this._state = null;
@@ -114,9 +116,7 @@ export class VydrzView {
     });
 
     document.getElementById("vy-settings-btn")?.addEventListener("click", () => this._openSettings());
-    document.getElementById("vy-leave-btn")?.addEventListener("click", () => {
-      if (window.confirm("Opustit hru?")) this._onLeave();
-    });
+    document.getElementById("vy-leave-btn")?.addEventListener("click", () => this._confirmLeave());
     settings.addEventListener("click", (e) => {
       if (e.target.closest("[data-close]")) { settings.hidden = true; return; }
       const sound = e.target.closest("[data-set-sound]");
@@ -175,7 +175,7 @@ export class VydrzView {
     if (fresh) this._holdScores = result.scores_before;
 
     const deal = state.round === 1 && state.phase === "choosing" && !this._dealt && getSettings().deal;
-    if (deal) { this._dealing = true; this._dealtUids.clear(); }      // hide the hand until the cards land
+    if (deal) { this._dealing = true; this._charLanded = false; this._dealtUids.clear(); }      // hide the cards until they land
     this.render({ deal });
     if (state.round === 1 && state.phase === "choosing") this._dealt = true;
     // The host started the next round: the old result is no longer relevant.
@@ -228,7 +228,7 @@ export class VydrzView {
       <button class="vy-player${p.player_id === s.you ? " is-me" : ""}${p.locked && s.phase === "choosing" ? " is-locked" : ""}" type="button" data-pid="${esc(p.player_id)}">
         <span class="vy-player__name">${esc(p.display_name)}</span>
         <span class="vy-player__score">${scores ? scores[p.player_id] : p.score}<small> b.</small></span>
-        <span class="vy-player__state">${s.phase === "choosing" ? (p.locked ? "✔ vybráno" : "vybírá…") : (p.won.length ? `${p.won.length}× lokace` : "")}</span>
+        <span class="vy-player__state">${p.away ? "odešel(a)" : s.phase === "choosing" ? (p.locked ? "✔ vybráno" : "vybírá…") : (p.won.length ? `${p.won.length}× lokace` : "")}</span>
       </button>`).join("");
   }
 
@@ -253,7 +253,7 @@ export class VydrzView {
 
   _renderMe() {
     const me = this._me();
-    this._el.me.innerHTML = `<div class="vy-me__card">${characterFront(me.character)}</div>
+    this._el.me.innerHTML = `<div class="vy-me__card${this._charLanded ? "" : " is-undealt"}" data-char>${characterFront(me.character)}</div>
       <div class="vy-me__info">
         <h3>${esc(me.display_name)}</h3>
         <p>Tvoje postava. Klepni pro zvětšení.</p>
@@ -402,8 +402,15 @@ export class VydrzView {
     const me = this._me();
     const slotOf = (kind, uid) => this._el[kind === "lokace" ? "locs" : "exs"].querySelector(`.vy-slot[data-uid="${CSS.escape(uid)}"]`);
     await this._dealIntro.play({
+      character: me.character,
+      getCharSlot: () => this._el.me.querySelector(".vy-me__card"),
+      onLandChar: () => {
+        this._charLanded = true;
+        const el = this._el.me.querySelector(".vy-me__card");
+        if (el) { el.classList.remove("is-undealt"); el.classList.add("is-dealt-pop"); }
+      },
       pairs: me.locations.map((l, i) => ({ lokace: l, existence: me.existences[i] })),
-      counts: { lokace: this._state.decks.lokace, existence: this._state.decks.existence },
+      counts: { postava: this._state.decks.postava, lokace: this._state.decks.lokace, existence: this._state.decks.existence },
       getSlot: slotOf,
       onLand: (uid) => {
         this._dealtUids.add(uid);
@@ -419,6 +426,8 @@ export class VydrzView {
       },
     });
     this._dealing = false;
+    this._charLanded = true;
+    this._renderMe();
     this._renderHands();
   }
 }

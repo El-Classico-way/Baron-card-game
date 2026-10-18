@@ -68,3 +68,18 @@ def browser():
         b.new_context = new_context
         yield b
         b.close()
+
+
+@pytest.fixture
+def page_factory(browser):
+    """Phone-sized pages that are closed after the test."""
+    contexts = []
+
+    def make():
+        ctx = browser.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
+        contexts.append(ctx)
+        return ctx.new_page()
+
+    yield make
+    for ctx in contexts:
+        ctx.close()

@@ -81,6 +81,7 @@
       <div class="mode-pick">
         <span class="mode-pick__label">Režim hry</span>
         <div id="mode-switch" class="seg" role="radiogroup" aria-label="Režim hry"></div>
+        <p id="mode-note" class="mode-pick__hint" hidden>Režim a způsob počítání nastavuje host, tedy ten, kdo založil místnost.</p>
         <div id="variant-box" hidden>
           <span class="mode-pick__label">Počítání bodů</span>
           <div id="variant-switch" class="seg" role="radiogroup" aria-label="Způsob počítání"></div>
@@ -192,6 +193,8 @@
     </div>
     <div id="vm-bar" class="vy-bar"></div>
   </div>
+  <div id="confirm-dialog" class="cd" hidden role="alertdialog" aria-modal="true"></div>
+  <div id="baron-splash" class="bs" hidden role="dialog" aria-modal="true" aria-label="Vítěz"></div>
   <div id="deal-intro" class="di" hidden role="dialog" aria-modal="true" aria-label="Rozdávání karet"></div>
   <div id="vm-keypad" class="np" hidden role="dialog" aria-modal="true"></div>
   <div id="vy-sheet" class="vs" hidden role="dialog" aria-modal="true" aria-label="Karty hráče"></div>

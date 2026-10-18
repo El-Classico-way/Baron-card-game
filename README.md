@@ -2,7 +2,23 @@
 
 Multiplayer online card game inspired by Bang!. See [ARCHITECTURE.md](ARCHITECTURE.md) for design rules.
 
-## Setup
+## Hraní s kamarády (jedno spuštění)
+
+Pro toho, kdo pouští server (stačí Linux, macOS nebo WSL a Python 3.10+):
+
+    ./start.sh
+
+Skript sám připraví Python prostředí a závislosti (poprvé to chvíli trvá), spustí
+server a vypíše **odkaz pro ostatní**. Odkaz funguje z libovolné sítě: skript
+otevře bezplatný „quick tunnel“ přes `cloudflared` (stáhne se jednorázově do
+`.bin/`, účet není potřeba). Kamarádi odkaz jen otevřou v prohlížeči a napíšou
+jméno. Hostem hry je ten, kdo založí místnost. Konec přes Ctrl+C.
+
+- `./start.sh --lan` jen místní síť, nic se nestahuje (hráči jdou na `http://<IP>:8000`).
+- `PORT=9000 ./start.sh` jiný port.
+- Odkaz je veřejný, kdo ho má, může hrát. Po skončení se zruší spolu se serverem.
+
+## Setup (vývoj)
 
     python -m venv .venv && . .venv/bin/activate
     pip install -r requirements-dev.txt

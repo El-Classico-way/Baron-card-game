@@ -179,3 +179,48 @@ def test_snapshot_shows_public_hands_and_deck_counts():
     assert s["mode"] == "vydrz" and s["round"] == 1 and s["you"] == "p1"
     assert all(len(p["locations"]) == 8 and len(p["existences"]) == 8 for p in s["players"])
     assert s["decks"]["chlast"] == 100 and s["decks"]["postava"] == 7
+
+
+# --- waiting for every player ------------------------------------------------
+
+def test_round_waits_for_every_player_however_many_have_picked():
+    g = make(4)
+    for i, p in enumerate(g.players[:3]):
+        assert g.action_choose(p.player_id, p.locations[0].uid, p.existences[0].uid).ok
+        assert g.phase == Phase.CHOOSING and g.last_result is None, f"resolved early after {i + 1} of 4"
+    last = g.players[3]
+    assert g.action_choose(last.player_id, last.locations[0].uid, last.existences[0].uid).ok
+    assert g.phase == Phase.REVEAL                                # only the last pick resolves the round
+
+
+def test_next_round_does_not_start_by_itself():
+    g = make(3)
+    choose_first(g)
+    assert g.phase == Phase.REVEAL and g.round == 1               # waits for the host's "next round"
+
+
+# --- a player who leaves never blocks the others -----------------------------
+
+def test_leaving_player_is_played_automatically():
+    g = make(3, seed=2)
+    a, b, gone = g.players
+    g.action_choose(a.player_id, a.locations[0].uid, a.existences[0].uid)
+    g.mark_away(gone.player_id)
+    assert g.phase == Phase.CHOOSING                              # still waiting for b
+    g.action_choose(b.player_id, b.locations[0].uid, b.existences[0].uid)
+    assert g.phase == Phase.REVEAL
+    assert g.snapshot("p1")["players"][2]["away"] is True
+    g.action_next_round()
+    assert g.phase == Phase.CHOOSING                              # the leaver is auto-picked again next round
+    assert gone.pick is not None and a.pick is None
+
+
+def test_game_finishes_even_if_everyone_but_one_leaves():
+    g = make(3, seed=4)
+    g.mark_away("p2"); g.mark_away("p3")
+    for _ in range(8):
+        p = g.players[0]
+        g.action_choose("p1", p.locations[0].uid, p.existences[0].uid)
+        if g.phase == Phase.REVEAL:
+            g.action_next_round()
+    assert g.phase == Phase.FINISHED

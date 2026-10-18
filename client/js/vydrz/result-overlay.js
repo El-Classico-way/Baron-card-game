@@ -16,6 +16,7 @@
 
 import { drinkFront, cardBack, drinkInfo, fmtStat } from "./cards.js";
 import * as sfx from "./sound.js";
+import { showBaronSplash } from "./winner-splash.js";
 import { getSettings, SPEED_FACTOR } from "./settings.js";
 
 const SOURCES = ["postava", "lokace", "existence"];
@@ -122,7 +123,13 @@ export class ResultOverlay {
     this._showOutcome(result, ctx);
     await this._countScores(result, wait, alive);
     if (!alive()) return;
-    if (result.final) this._showFinal(result.final, ctx);
+    if (result.final) {
+      // Everybody sees who is the Baron before the final table.
+      const f = result.final;
+      await showBaronSplash({ name: f.winner_id ? (ctx.names[f.winner_id] ?? f.winner_id) : null, isMe: f.winner_id === ctx.myId });
+      if (!alive()) return;
+      this._showFinal(f, ctx);
+    }
     this._showFooter(result, ctx);
   }
 

@@ -145,7 +145,13 @@ def test_full_mock_game_to_the_end(page, base_url):
         page.click(".vr__skip")
         if rnd < 8:
             page.click(".vr__next")
+    expect(page.locator("#baron-splash")).to_be_visible(timeout=10000)        # "<Jméno> je Baron!" for everyone
+    winner = page.locator("#baron-splash .bs__name").inner_text()
+    expect(page.locator("#baron-splash .bs__title")).to_contain_text("je Baron!")
+    page.keyboard.press("Enter")
+    expect(page.locator("#baron-splash")).to_be_hidden()
     expect(page.locator(".vr__final")).to_be_visible()
+    assert winner in page.locator(".vr__ranking li.is-winner").inner_text()   # the splash named the ranking's winner
     expect(page.locator(".vr__ranking li")).to_have_count(3)
     expect(page.locator(".vr__ranking li.is-winner")).to_have_count(1)
     expect(page.locator(".vr__ranking li.is-loser")).to_have_count(1)

@@ -87,6 +87,7 @@ class _Player:
     won: list[LocationCard] = field(default_factory=list)
     score: int = 0
     plan: list[tuple[str, str]] | None = None      # 8 (location uid, existence uid)
+    away: bool = False                             # left the game; the engine plays for them
 
 
 @dataclass
@@ -179,10 +180,39 @@ class ManualVydrzGame:
         if sorted(locs) != sorted(l.uid for l in p.locations) or sorted(exs) != sorted(e.uid for e in p.existences):
             return ActionResult.fail("Každou svou lokaci a existenci musíš použít přesně jednou.")
         p.plan = [(l, e) for l, e in pairs]
-        if all(q.plan for q in self.players):
+        self._start_if_planned()
+        return ActionResult.success()
+
+    def mark_away(self, player_id: str) -> None:
+        """A player left. The game never waits for them: the engine plays on their behalf."""
+        p = self._player(player_id)
+        if p is None or p.away:
+            return
+        p.away = True
+        self._autoplay_away()
+
+    def _start_if_planned(self) -> None:
+        # Round 1 begins only when EVERY player has handed in a plan.
+        if self.phase == Phase.PLANNING and all(q.plan for q in self.players):
             self.round = 1
             self._begin_round()
-        return ActionResult.success()
+
+    def _autoplay_away(self) -> None:
+        """Plan in hand order and enter the right number for players who are away."""
+        if self.phase == Phase.PLANNING:
+            for p in self.players:
+                if p.away and p.plan is None:
+                    p.plan = [(l.uid, e.uid) for l, e in zip(p.locations, p.existences)]
+            self._start_if_planned()
+            return
+        c = self._calc
+        while self.phase == Phase.CALCULATING and c is not None:
+            todo = [pid for pid in c.participants if pid not in c.entries and self._player(pid).away]
+            if not todo:
+                return
+            self.action_submit(todo[0], c.correct[todo[0]])
+            if self._calc is not c:                  # the session moved on (round over / tie-break)
+                c = self._calc
 
     def action_submit(self, player_id: str, value: int) -> ActionResult:
         """Enter the number you counted."""
@@ -245,12 +275,14 @@ class ManualVydrzGame:
         self._draw_counter += 1
         self._calc = _Calc("round", drinks, [p.player_id for p in self.players], correct,
                            False, self._draw_counter)
+        self._autoplay_away()
 
     def _start_tiebreak(self, purpose: str, tied: list[str]) -> None:
         drink = self._draw_drink()
         correct = {pid: self._player(pid).character.stats[drink] for pid in tied}
         self._draw_counter += 1
         self._calc = _Calc(purpose, [drink], list(tied), correct, True, self._draw_counter)
+        self._autoplay_away()
 
     def _entry_table(self, c: _Calc) -> dict[str, dict]:
         return {pid: {"value": e.value, "tag": e.tag, "entered": e.entered, "correct": c.correct[pid]}
@@ -363,6 +395,7 @@ class ManualVydrzGame:
                 "existences": [e.to_dict() for e in p.existences],
                 "won": [l.to_dict() for l in p.won],
                 "planned": p.plan is not None,
+                "away": p.away,
                 "plan": ([{"location_uid": l, "existence_uid": e} for l, e in p.plan]
                          if mine and p.plan else None),
             }

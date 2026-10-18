@@ -40,6 +40,7 @@ import { VydrzView }     from "./vydrz/view.js";
 import { ManualView }    from "./vydrz/manual-view.js";
 import { Numpad }        from "./vydrz/numpad.js";
 import { DealIntro }     from "./vydrz/deal-intro.js";
+import { confirmDialog } from "./ui/confirm.js";
 import { MockSocket }   from "./mock/mock-socket.js";
 import { Store }        from "./core/store.js";
 import { Renderer }     from "./game/renderer.js";
@@ -95,6 +96,7 @@ function boot() {
     socket, inspector, dealIntro,
     getHostId: () => store.state.lobby.hostPlayerId,
     onLeave: () => _leave(socket),
+    onConfirmLeave: () => leaveGame(socket),
   });
   const openSettings = () => vydrz._openSettings();
   new ManualView({
@@ -102,6 +104,7 @@ function boot() {
     numpad: new Numpad(document.getElementById("vm-keypad")),
     getHostId: () => store.state.lobby.hostPlayerId,
     onLeave: () => _leave(socket),
+    onConfirmLeave: () => leaveGame(socket),
   });
   on(document.getElementById("lobby-settings-btn"), "click", openSettings);
   for (const id of ["mode-switch", "variant-switch"]) {
@@ -119,8 +122,11 @@ function boot() {
   _wireActionBar(elements);
   _wireLeaveButtons(socket);
   on(document.getElementById("demo-btn"), "click", () => {
-    location.search = "?mock=1";
+    try { sessionStorage.setItem(DEMO_KEY, "1"); } catch { /* demo via ?mock=1 still works */ }
+    location.reload();
   });
+  // A build without a server (tools/build_preview.py) can only show the demo.
+  if (window.BARON_MOCK) document.body.classList.add("static-preview");
 
   // Expose to console for debugging in development.
   if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
@@ -314,14 +320,18 @@ if (document.readyState === "loading") {
 // Mock mode, invite link, chat sheet, leave
 // ---------------------------------------------------------------------------
 
+const DEMO_KEY = "baron.demo";
+
 function _mockOptions() {
-  // Static preview builds (tools/build_preview.py) can't rely on a query string.
-  if (window.BARON_MOCK) return { bots: 3, autostart: false, ...(window.BARON_MOCK === true ? {} : window.BARON_MOCK) };
   const params = new URLSearchParams(location.search);
-  if (!params.has("mock")) return null;
-  const bots = parseInt(params.get("bots") ?? "3", 10);
-  // ?mode=rezba selects the older action-game prototype in the mock (dev/testing only).
-  return { bots: Number.isFinite(bots) ? bots : 3, autostart: params.get("mock") === "table", mode: params.get("mode") };
+  if (params.has("mock")) {
+    const bots = parseInt(params.get("bots") ?? "3", 10);
+    // ?mode=rezba selects the older action-game prototype in the mock (dev/testing only).
+    return { bots: Number.isFinite(bots) ? bots : 3, autostart: params.get("mock") === "table", mode: params.get("mode") };
+  }
+  // Demo started from the landing page ("Vyzkoušet ukázku"); cleared when leaving.
+  try { if (sessionStorage.getItem(DEMO_KEY)) return { bots: 3, autostart: false, mode: null }; } catch { /* no storage */ }
+  return null;
 }
 
 async function _shareInvite(store) {
@@ -354,14 +364,24 @@ function _wireChatSheet() {
   on(close,  "click", () => set(false));
 }
 
+/** Leave for good: tell the server, forget the session and go back to the landing page. */
 function _leave(socket) {
-  socket.disconnect();                      // also clears the stored session
-  location.href = location.pathname;        // back to the landing page
+  try { socket.sendLeaveRoom?.(); } catch { /* not connected */ }
+  try { socket.disconnect(); } catch { /* already closed */ }       // also clears the stored session
+  try { sessionStorage.removeItem(DEMO_KEY); } catch { /* no storage */ }
+  try { history.replaceState({}, "", location.pathname); } catch { /* sandboxed */ }   // drop ?mock / ?room
+  location.reload();
+}
+
+/** Ask first when a game is running. */
+export async function leaveGame(socket) {
+  const ok = await confirmDialog({
+    title: "Opustit hru?", text: "Hra poběží dál bez tebe. Zpátky už se nepřipojíš.", ok: "Opustit", cancel: "Zůstat", danger: true,
+  });
+  if (ok) _leave(socket);
 }
 
 function _wireLeaveButtons(socket) {
   on(document.getElementById("leave-btn"), "click", () => _leave(socket));
-  on(document.getElementById("leave-game-btn"), "click", () => {
-    if (window.confirm("Opustit hru?")) _leave(socket);
-  });
+  on(document.getElementById("leave-game-btn"), "click", () => leaveGame(socket));
 }

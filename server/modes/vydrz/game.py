@@ -73,6 +73,7 @@ class _Player:
     won: list[LocationCard] = field(default_factory=list)
     score: int = 0
     pick: tuple[str, str] | None = None        # (location uid, existence uid)
+    away: bool = False                         # left the game; the engine plays for them
 
 
 class VydrzGame:
@@ -148,9 +149,29 @@ class VydrzGame:
         if not any(e.uid == existence_uid for e in p.existences):
             return ActionResult.fail("Tuhle existenci nemáš.")
         p.pick = (location_uid, existence_uid)
-        if all(q.pick for q in self.players):
-            self._resolve_round()
+        self._resolve_if_complete()
         return ActionResult.success()
+
+    def mark_away(self, player_id: str) -> None:
+        """A player left. The game never waits for them: their picks are made automatically."""
+        p = self._player(player_id)
+        if p is None or p.away:
+            return
+        p.away = True
+        self._autoplay_away()
+
+    def _autoplay_away(self) -> None:
+        if self.phase != Phase.CHOOSING:
+            return
+        for p in self.players:
+            if p.away and p.pick is None and p.locations and p.existences:
+                p.pick = (p.locations[0].uid, p.existences[0].uid)
+        self._resolve_if_complete()
+
+    def _resolve_if_complete(self) -> None:
+        # The round resolves only when EVERY player has picked.
+        if self.phase == Phase.CHOOSING and all(q.pick for q in self.players):
+            self._resolve_round()
 
     def action_next_round(self) -> ActionResult:
         if self.phase != Phase.REVEAL:
@@ -159,6 +180,7 @@ class VydrzGame:
         self.phase = Phase.CHOOSING
         for p in self.players:
             p.pick = None
+        self._autoplay_away()
         return ActionResult.success()
 
     # ------------------------------------------------------------- resolution
@@ -279,6 +301,7 @@ class VydrzGame:
                 "existences": [e.to_dict() for e in p.existences],
                 "won": [l.to_dict() for l in p.won],
                 "locked": p.pick is not None,
+                "away": p.away,
                 "pick": ({"location_uid": p.pick[0], "existence_uid": p.pick[1]}
                          if p.pick and own_or_open else None),
             }

@@ -1,5 +1,7 @@
 """Výdrž (ruční): lobby variant, planning all 8 pairs, drink reveal, number pad,
 Blbec / Švindlíř tags, and two real browsers on the server."""
+import re
+
 import pytest
 from playwright.sync_api import expect
 
@@ -41,8 +43,8 @@ def _correct(page):
     return page.evaluate("window.__app.socket._vydrz.calc.correct.me")
 
 
-def _set_value(page, value):
-    """Type a number on the pad (opened by its icon) and apply it to the field."""
+def _type_on_pad(page, value):
+    """Open the number pad from its icon and type a number (without confirming)."""
     page.click("[data-numpad-open]")
     expect(page.locator(".np__panel")).to_be_visible()
     for _ in range(4):
@@ -51,15 +53,14 @@ def _set_value(page, value):
         page.click('[data-key="sign"]')
     for ch in str(abs(value)):
         page.click(f'[data-key="{ch}"]')
-    page.click('[data-key="enter"]')
-    expect(page.locator(".np__panel")).to_have_count(0)
-    expect(page.locator("[data-value]")).to_have_text(str(value).replace("-", "\u2212"))
 
 
 def _enter(page, value):
-    """Set the number, then confirm it with the Enter button under the field."""
-    _set_value(page, value)
-    page.click("[data-submit]")
+    """Type the number on the pad and send it with the pad's own Enter button."""
+    _type_on_pad(page, value)
+    page.click('[data-key="enter"]')
+    expect(page.locator(".np__panel")).to_have_count(0)
+    expect(page.locator("[data-submit]")).to_have_text("Odesláno")
 
 
 def _no_hscroll(page):
@@ -153,16 +154,19 @@ def test_calculating_shows_pair_drinks_and_numpad(page, base_url):
     expect(page.locator("#np-display")).to_have_text("42")
     page.click('[data-key="sign"]')
     expect(page.locator("#np-display")).to_have_text("\u221242")
-    page.click('[data-key="enter"]')                                     # applies the number, does NOT send it
+    page.click(".np__panel [data-close]")                                # closing the pad changes nothing and sends nothing
     expect(page.locator(".np__panel")).to_have_count(0)
-    expect(page.locator("[data-value]")).to_have_text("\u221242")
-    expect(page.locator("[data-submit]")).to_be_enabled()                # still waiting for the Enter button
-    page.click('[data-step="1"]')                                        # and it can be adjusted afterwards
-    expect(page.locator("[data-value]")).to_have_text("\u221241")
+    expect(page.locator("[data-value]")).to_have_text("\u22121")
+    expect(page.locator("[data-submit]")).to_be_enabled()
+    page.click('[data-step="1"]'); page.click('[data-step="1"]')       # the stepper keeps working after the pad
+    expect(page.locator("[data-value]")).to_have_text("1")
+    # Enter on the pad sends the typed number straight away.
     page.click("[data-numpad-open]")
-    page.click(".np__panel [data-close]")                                # closing the pad changes nothing
+    page.click('[data-key="back"]'); page.click('[data-key="7"]')
+    page.click('[data-key="enter"]')
     expect(page.locator(".np__panel")).to_have_count(0)
-    expect(page.locator("[data-value]")).to_have_text("\u221241")
+    expect(page.locator("[data-submit]")).to_have_text("Odesláno")
+    expect(page.locator(".vm-row", has_text="Ty").locator(".vm-row__val")).to_have_text(re.compile(r"7|\u2212?\d+"))
     assert not page.js_errors
 
 
@@ -246,6 +250,10 @@ def test_full_manual_game_reaches_the_final_ranking(page, base_url):
         if rnd < 8:
             page.click('[data-act="next"]')
             expect(page.locator('[data-act="next"]')).to_have_count(0)      # wait for the next round to begin
+    expect(page.locator("#baron-splash")).to_be_visible(timeout=10000)       # everybody sees who is the Baron
+    expect(page.locator("#baron-splash .bs__title")).to_contain_text("je Baron!")
+    page.click("#baron-splash .bs__btn")
+    expect(page.locator("#baron-splash")).to_be_hidden()
     expect(page.locator(".vr__ranking li")).to_have_count(2)
     expect(page.locator(".vr__ranking li.is-winner")).to_have_count(1)
     assert not page.js_errors

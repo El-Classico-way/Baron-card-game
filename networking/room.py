@@ -336,21 +336,36 @@ class Room:
         if client is None or client.is_connected:
             return   # reconnected in time
 
-        client.evict()
-        del self._clients[player_id]
-        if client.reconnect_token in self._token_index:
-            del self._token_index[client.reconnect_token]
-
         logger.info(
-            "Evicted player %s (%s) from room %s.",
+            "Evicting player %s (%s) from room %s.",
             player_id[:8], client.display_name, self.room_id,
         )
+        await self._remove_client(player_id)
 
+    async def _remove_client(self, player_id: str) -> None:
+        """
+        Take a player out of the room for good (they left, or did not come back).
+
+        In the lobby they simply disappear (and the host role moves on if the
+        host left). Mid-game the engine keeps their seat and plays for them,
+        so the others never wait for someone who is gone.
+        """
+        client = self._clients.pop(player_id, None)
+        if client is None:
+            return
+        self._cancel_eviction_timer(player_id)
+        self._token_index.pop(client.reconnect_token, None)
+        client.evict()
+
+        if self._host_player_id == player_id:
+            self._host_player_id = next(iter(self._clients), None)
+        if self._vydrz is not None:
+            self._vydrz.mark_away(player_id)
+            await self._send_vydrz_state_all()
+        await self._broadcast(mk_player_disconnected(player_id, client.display_name))
+        await self._broadcast_room_state()
         if self.is_empty:
             self.phase = RoomPhase.EMPTY
-
-        # TODO: if game is in progress, notify engine to eliminate the player
-        #       or pause the game.  Decision depends on game-mode rules.
 
     def _cancel_eviction_timer(self, player_id: str) -> None:
         task = self._eviction_tasks.pop(player_id, None)
@@ -600,6 +615,15 @@ class Room:
             return
         await client.send(mk_action_ack("vydrz_next_round"))
         await self._send_vydrz_state_all()
+
+    async def _handle_leave_room(self, client: ConnectedClient, payload: Any) -> None:
+        websocket = client.websocket
+        await self._remove_client(client.player_id)
+        if websocket is not None:
+            try:
+                await websocket.close()
+            except Exception:       # already closed
+                pass
 
     async def _handle_end_turn(
         self, client: ConnectedClient, payload: EndTurnPayload
@@ -860,6 +884,7 @@ class Room:
                 "discard_card":     self._handle_discard_card,
                 "end_turn":         self._handle_end_turn,
                 "start_game":       self._handle_start_game,
+                "leave_room":       self._handle_leave_room,
                 "set_mode":         self._handle_set_mode,
                 "vydrz_choose":     self._handle_vydrz_choose,
                 "vydrz_next_round": self._handle_vydrz_next_round,

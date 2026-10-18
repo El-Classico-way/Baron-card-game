@@ -252,3 +252,59 @@ def test_manual_vydrz_over_websocket():
             b.send_json({"type": "vydrz_submit", "payload": {"value": 150}})
             tie = _state(a, phase="calculating")
             assert tie["calc"]["tiebreak"] is True and len(tie["calc"]["drinks"]) == 1
+
+
+
+def _room_players(ws):
+    """Latest room_state player ids/host from a client's queue."""
+    last = None
+    for _ in range(12):
+        msg = _recv(ws)
+        if msg["type"] == "room_state":
+            last = msg["payload"]
+            break
+    return last
+
+
+def test_leaving_the_lobby_removes_the_player_and_passes_the_host_on():
+    with TestClient(app) as c:
+        with c.websocket_connect("/ws/roomL?display_name=Alice") as a, \
+             c.websocket_connect("/ws/roomL?display_name=Bob") as b:
+            ja = _drain_until(a, "joined")["payload"]["player_id"]
+            jb = _drain_until(b, "joined")["payload"]["player_id"]
+            a.send_json({"type": "leave_room", "payload": {}})
+            for _ in range(10):                                # Bob sees Alice go and becomes host
+                rs = _drain_until(b, "room_state")["payload"]
+                if ja not in [p["player_id"] for p in rs["players"]]:
+                    break
+            assert [p["player_id"] for p in rs["players"]] == [jb]
+            assert rs["host_player_id"] == jb
+
+
+def test_game_does_not_resolve_until_every_player_has_acted_and_a_leaver_does_not_block():
+    with TestClient(app) as c:
+        with c.websocket_connect("/ws/roomW?display_name=A") as a, \
+             c.websocket_connect("/ws/roomW?display_name=B") as b, \
+             c.websocket_connect("/ws/roomW?display_name=C") as cc:
+            for ws in (a, b, cc):
+                _drain_until(ws, "joined")
+            a.send_json({"type": "set_mode", "payload": {"mode": "vydrz"}})
+            a.send_json({"type": "start_game", "payload": {}})
+            states = {name: _state(ws) for name, ws in (("a", a), ("b", b), ("c", cc))}
+
+            def pick(ws, st):
+                me = next(p for p in st["players"] if p["player_id"] == st["you"])
+                ws.send_json({"type": "vydrz_choose", "payload": {
+                    "location_uid": me["locations"][0]["uid"], "existence_uid": me["existences"][0]["uid"]}})
+
+            pick(a, states["a"])
+            pick(b, states["b"])
+            for _ in range(6):                      # two of three have picked: still choosing
+                st = _drain_until(a, "vydrz_state")["payload"]
+                if sum(p["locked"] for p in st["players"]) == 2:
+                    assert st["phase"] == "choosing"
+                    break
+            cc.send_json({"type": "leave_room", "payload": {}})        # the third player leaves instead
+            done = _state(a, phase="reveal")                           # the game does not wait for them forever
+            assert done["last_result"]["round"] == 1
+            assert any(p["away"] for p in done["players"])

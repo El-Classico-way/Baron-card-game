@@ -449,3 +449,41 @@
   .di__spot { width: min(22vw, 120px); }
 }
 @media (prefers-reduced-motion: reduce) { .di__inner { transition: none; } }
+
+/* Character in the manual planning stage; in-page confirm dialog; static preview */
+.vm-me { display: flex; gap: 14px; align-items: center; padding: 0 12px; }
+.vm-me__text h3 { font-family: var(--font-display); color: var(--gold-light); font-size: 1.2rem; text-transform: none; letter-spacing: 0; padding: 0; }
+.vm-me__text p { color: var(--text-dim); font-size: .9rem; }
+.vm-char.is-undealt { visibility: hidden; }
+.vm-char.is-dealt-pop { animation: deal-pop .3s var(--anim-easing); }
+.di__caption { min-height: 1.4em; text-align: center; font-family: var(--font-display); font-size: 1.2rem; color: var(--gold-light); }
+
+.cd { position: fixed; inset: 0; z-index: 400; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.cd__backdrop { position: absolute; inset: 0; background: rgba(4, 12, 8, .78); }
+.cd__panel { position: relative; width: 100%; max-width: 360px; background: var(--paper); color: var(--ink); border-radius: 16px; padding: 22px 20px; display: flex; flex-direction: column; gap: 10px; text-align: center; box-shadow: 0 16px 48px rgba(0,0,0,.6); }
+.cd__panel h2 { font-family: var(--font-display); font-size: 1.4rem; }
+.cd__panel p { color: #5b5238; }
+.cd__buttons { display: flex; gap: 10px; margin-top: 6px; }
+.cd__buttons .btn { flex: 1; }
+.cd__panel .btn--ghost { color: var(--ink); background: rgba(0,0,0,.06); border-color: rgba(0,0,0,.18); }
+
+body.static-preview #join-form { display: none; }
+.mode-pick__hint:not([hidden]) { display: block; }
+
+/* ---------- 7. "<Jméno> je Baron!" ---------------------------------- */
+
+.bs { position: fixed; inset: 0; z-index: 420; display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, rgba(40, 70, 40, .96), rgba(4, 12, 8, .98)); overflow: hidden; padding: 20px; }
+.bs__rays { position: absolute; inset: -50%; background: repeating-conic-gradient(from 0deg, rgba(224, 176, 76, .16) 0 9deg, transparent 9deg 18deg); animation: bs-spin 24s linear infinite; }
+@keyframes bs-spin { to { transform: rotate(360deg); } }
+.bs__confetti { position: absolute; inset: 0; pointer-events: none; }
+.bs__bit { position: absolute; top: -12px; width: 9px; height: 16px; border-radius: 2px; opacity: .9; animation: bs-fall linear infinite; }
+@keyframes bs-fall { to { transform: translateY(110vh) rotate(540deg); } }
+.bs__card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; max-width: 520px; animation: bs-in .7s cubic-bezier(.2, 1.4, .4, 1) both; }
+@keyframes bs-in { from { transform: scale(.4) rotate(-6deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.bs__crown { font-size: clamp(4rem, 22vw, 7rem); line-height: 1; color: var(--gold-light); text-shadow: 0 0 .4em rgba(224, 176, 76, .8); animation: bs-bob 1.6s ease-in-out infinite; }
+@keyframes bs-bob { 50% { transform: translateY(-8px) rotate(3deg); } }
+.bs__title { font-family: var(--font-display); font-size: clamp(2rem, 11vw, 3.4rem); line-height: 1.1; color: var(--text); overflow-wrap: anywhere; text-wrap: balance; }
+.bs__name { color: var(--gold-light); text-shadow: 0 0 .5em rgba(224, 176, 76, .6); }
+.bs__sub { color: var(--text-dim); font-size: 1.1rem; }
+.bs__btn { margin-top: 10px; min-width: 200px; }
+@media (prefers-reduced-motion: reduce) { .bs__rays, .bs__bit, .bs__crown { animation: none; } .bs__card { animation: none; } }

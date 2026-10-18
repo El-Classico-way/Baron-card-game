@@ -22,6 +22,7 @@ import {
 } from "./cards.js";
 import { getSettings, updateSettings } from "./settings.js";
 import * as sfx from "./sound.js";
+import { showBaronSplash } from "./winner-splash.js";
 
 const TAG_LABEL = { blbec: "Blbec", svindlir: "Švindlíř" };
 const MAX_VALUE = 999;
@@ -32,17 +33,19 @@ const signed = (n) => (n < 0 ? `−${Math.abs(n)}` : String(n));
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 export class ManualView {
-  /** @param {{ socket, inspector, numpad, dealIntro, getHostId, onLeave, openSettings }} deps */
-  constructor({ socket, inspector, numpad, dealIntro, getHostId, onLeave, openSettings }) {
+  /** @param {{ socket, inspector, numpad, dealIntro, getHostId, onLeave, onConfirmLeave, openSettings }} deps */
+  constructor({ socket, inspector, numpad, dealIntro, getHostId, onLeave, onConfirmLeave, openSettings }) {
     this._socket = socket;
     this._inspector = inspector;
     this._numpad = numpad;
     this._dealIntro = dealIntro;
     this._dealing = false;
     this._dealtUids = new Set();
+    this._charLanded = true;
     this._dealt = false;
     this._getHostId = getHostId;
     this._onLeave = onLeave;
+    this._confirmLeave = onConfirmLeave ?? (() => onLeave());
     this._openSettings = openSettings;
     this._state = null;
 
@@ -55,6 +58,7 @@ export class ManualView {
     this._valueDraw = null;                // draw_id the value belongs to (reset on a new draw)
     this._fresh = true;                    // next typed digit replaces the value
     this._negPending = false;              // "-" typed before any digit (value is still 0)
+    this._splashed = false;                // the "je Baron!" announcement was shown
 
     const $ = (id) => document.getElementById(id);
     this._el = { panel: $("vm-panel"), title: $("vm-title"), players: $("vm-players"), stage: $("vm-stage"), bar: $("vm-bar"), sheet: $("vy-sheet") };
@@ -101,7 +105,7 @@ export class ManualView {
     });
     document.addEventListener("keydown", (e) => this._onKey(e));
     document.getElementById("vm-settings-btn")?.addEventListener("click", () => this._openSettings());
-    document.getElementById("vm-leave-btn")?.addEventListener("click", () => { if (window.confirm("Opustit hru?")) this._onLeave(); });
+    document.getElementById("vm-leave-btn")?.addEventListener("click", () => this._confirmLeave());
   }
 
   // ------------------------------------------------------------------- state
@@ -127,19 +131,32 @@ export class ManualView {
     }
     const deal = state.phase === "planning" && !this._dealt && getSettings().deal;
     if (state.phase === "planning") this._dealt = true;
-    if (deal) { this._dealing = true; this._dealtUids.clear(); }
+    if (deal) { this._dealing = true; this._charLanded = false; this._dealtUids.clear(); }
     this.render();
     if (deal) requestAnimationFrame(() => this._runDeal());
     this._maybeRevealDrinks();
+    const final = state.phase === "finished" ? state.last_result?.final : null;
+    if (final && !this._splashed) {
+      this._splashed = true;
+      showBaronSplash({ name: final.winner_id ? (this._names()[final.winner_id] ?? final.winner_id) : null, isMe: final.winner_id === state.you });
+    }
   }
 
   /** The 16 cards are shown pair by pair (see deal-intro.js), then land in the hand. */
   async _runDeal() {
     const me = this._me();
     const slotOf = (kind, uid) => this._el.stage.querySelector(`.vy-slot[data-uid="${CSS.escape(uid)}"]`);
+    const charSlot = () => this._el.stage.querySelector(".vm-char");
     await this._dealIntro.play({
+      character: me.character,
+      getCharSlot: charSlot,
+      onLandChar: () => {
+        this._charLanded = true;
+        const el = charSlot();
+        if (el) { el.classList.remove("is-undealt"); el.classList.add("is-dealt-pop"); }
+      },
       pairs: me.locations.map((l, i) => ({ lokace: l, existence: me.existences[i] })),
-      counts: { lokace: this._state.decks.lokace, existence: this._state.decks.existence },
+      counts: { postava: this._state.decks.postava, lokace: this._state.decks.lokace, existence: this._state.decks.existence },
       getSlot: slotOf,
       onLand: (uid) => {
         this._dealtUids.add(uid);
@@ -153,6 +170,7 @@ export class ManualView {
       },
     });
     this._dealing = false;
+    this._charLanded = true;
     if (this._state?.phase === "planning") this.render();
   }
 
@@ -179,7 +197,8 @@ export class ManualView {
     const calc = s.calc;
     this._el.players.innerHTML = s.players.map((p) => {
       let status = "";
-      if (s.phase === "planning") status = p.planned ? "✔ plán hotov" : "plánuje…";
+      if (p.away) status = "odešel(a)";
+      else if (s.phase === "planning") status = p.planned ? "✔ plán hotov" : "plánuje…";
       else if (s.phase === "calculating" && calc?.participants.includes(p.player_id))
         status = calc.entries[p.player_id] ? "✔ zadáno" : "počítá…";
       else if (p.won.length) status = `${p.won.length}× lokace`;
@@ -226,6 +245,8 @@ export class ManualView {
     };
 
     return `
+      <section class="vm-me"><div class="vm-char${this._charLanded ? "" : " is-undealt"}">${characterFront(me.character, { extra: "vc--mini vm-card" })}</div>
+        <div class="vm-me__text"><h3>${esc(me.display_name)}</h3><p>Tvoje postava. Klepnutím ji zvětšíš.</p></div></section>
       <p class="vm-info">Rozděl si <b>všech ${this._state.rounds_total} dvojic</b> předem. Dvojice č. 1 se použije v 1. kole, č. 2 ve 2. a tak dál. Ostatní uvidí tvé karty, ne pořadí.</p>
       <section class="vm-plan"><h3>Tvůj plán</h3><ol class="vm-plan__list">${rows}</ol></section>
       ${hand("lokace", "Lokace", locationFront)}
@@ -376,8 +397,10 @@ export class ManualView {
       title: "Tvoje číslo",
       hint: c.tiebreak ? "Stat tvé postavy u vytaženého chlastu." : "Součet statů všech tří chlastů na tvých kartách.",
       initial: this._value,
-      confirmLabel: "Použít ↵",
-      onSubmit: (n) => { this._value = n; this._fresh = true; this._paintValue(); },   // sending is the Enter button's job
+      onSubmit: (n) => {                      // Enter on the pad sends the number right away
+        this._value = n; this._fresh = true; this._paintValue();
+        this._submitValue();
+      },
     });
   }
 
