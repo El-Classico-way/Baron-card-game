@@ -129,11 +129,13 @@ export class Renderer {
     }
     el.textContent = message;
     el.hidden = false;
+    document.body.classList.add("is-targeting");
   }
 
   _hideTargetPrompt() {
     const el = document.getElementById("target-prompt");
     if (el) el.hidden = true;
+    document.body.classList.remove("is-targeting");
   }
 
   // ------------------------------------------------------------------
@@ -148,7 +150,8 @@ export class Renderer {
     if (el.lobbyPlayerList) {
       el.lobbyPlayerList.innerHTML = lobby.players.map(p => `
         <li class="lobby-player ${p.connected === false ? "disconnected" : ""}"
-            data-player-id="${p.player_id}">
+            data-player-id="${p.player_id}"
+            data-initial="${_esc((p.display_name ?? "?").trim().charAt(0).toUpperCase())}">
           <span class="lobby-player__name">${_esc(p.display_name)}</span>
           ${p.player_id === lobby.hostPlayerId
             ? '<span class="lobby-player__badge">host</span>' : ""}
@@ -164,6 +167,13 @@ export class Renderer {
       const enoughPlayers = lobby.players.length >= 2;
       el.startGameBtn.hidden   = !isHost;
       el.startGameBtn.disabled = !enoughPlayers;
+      const hint = document.getElementById("lobby-hint");
+      if (hint) {
+        hint.textContent = !isHost
+          ? "Waiting for the host to start the game…"
+          : enoughPlayers ? "Everyone in? Start whenever you're ready."
+                          : "Waiting for at least one more player…";
+      }
     }
   }
 
@@ -175,6 +185,7 @@ export class Renderer {
     const { game } = this._store.state;
     if (!game) return;
 
+    this._hideTargetPrompt();   // a resync clears any half-finished selection
     this.renderAllPlayers();
     this.renderHand();
     this.renderDeck();
@@ -228,10 +239,9 @@ export class Renderer {
         <div class="opponent__hp-bar" aria-label="${player.hp}/${player.max_hp} HP">
           <div class="opponent__hp-fill" style="width:${hpPct}%"></div>
         </div>
-        <div class="opponent__hp-label">${player.hp}/${player.max_hp}</div>
-        <div class="opponent__hand-count" aria-label="${player.hand_count} cards in hand">
-          ${"🃏".repeat(Math.min(player.hand_count ?? 0, 8))}
-          ${(player.hand_count ?? 0) > 8 ? `+${player.hand_count - 8}` : ""}
+        <div class="opponent__meta">
+          <span class="opponent__hp-label">${player.hp}/${player.max_hp}</span>
+          <span class="opponent__hand-count" aria-label="${player.hand_count ?? 0} cards in hand">${player.hand_count ?? 0}</span>
         </div>
         ${equipment.length > 0 ? `
           <div class="opponent__equipment">
@@ -316,7 +326,7 @@ export class Renderer {
     const countEl = node.querySelector(".opponent__hand-count");
     if (countEl) {
       const n = player.hand_count ?? 0;
-      countEl.textContent = "🃏".repeat(Math.min(n, 8)) + (n > 8 ? `+${n - 8}` : "");
+      countEl.textContent = String(n);
     }
   }
 

@@ -74,7 +74,7 @@ export const CardView = {
            tabindex="0"
            aria-label="${_attr(card.name)} — ${_attr(card.suit)} ${_attr(card.rank)}"
            aria-pressed="${isSelected}"
-           style="--card-art: url('/assets/cards/${_attr(card.id)}.webp')">
+           ${_artStyle(card)}>
         <div class="card__corner card__corner--top">
           <span class="card__rank">${_esc(card.rank)}</span>
           <span class="card__suit">${symbol}</span>
@@ -105,7 +105,7 @@ export const CardView = {
     const color  = SUIT_COLORS[card.suit]  ?? "black";
     return `
       <div class="discard-card discard-card--suit-${card.suit} discard-card--color-${color}"
-           style="--card-art: url('/assets/cards/${_attr(card.id)}.webp')"
+           ${_artStyle(card)}
            aria-label="Discard: ${_attr(card.name)}">
         <div class="card__corner card__corner--top">
           <span class="card__rank">${_esc(card.rank)}</span>
@@ -153,6 +153,13 @@ export const CardView = {
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+// Cards may opt out of art (placeholders, art not drawn yet) with has_art: false,
+// which avoids a 404 per card and lets the CSS suit-pip fallback show.
+function _artStyle(card) {
+  if (card.has_art === false) return "";
+  return `style="--card-art: url('assets/cards/${_attr(card.id)}.webp')"`;
+}
 
 function _esc(str) {
   if (str == null) return "";

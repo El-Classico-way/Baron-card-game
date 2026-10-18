@@ -2,218 +2,150 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#1a4a2e" />
-  <meta name="description" content="Multiplayer card game — play Bang! in your browser" />
+  <!-- viewport-fit=cover lets the layout use the notch area; CSS handles safe-area insets.
+       Pinch-zoom stays enabled for accessibility. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#10261b" />
+  <meta name="description" content="Baron — a multiplayer card game for your browser" />
 
-  <title>Bang! Online</title>
+  <title>Baron</title>
 
-  <!-- Preconnect to server for faster WS handshake -->
-  <link rel="preconnect" href="/" />
-
-  <link rel="stylesheet" href="/css/main.css" />
+  <!-- Relative URLs so the client works from any path or static host. -->
+  <link rel="stylesheet" href="css/main.css" />
 </head>
 <body>
 
-  <!-- ================================================================
-       CONNECTION BANNER
-       Shown when the WebSocket is disconnected or reconnecting.
-       Hidden when connected.
-       ================================================================ -->
-  <div id="connection-banner" class="connection-banner" hidden>
-    Connection lost — reconnecting…
-  </div>
-
-  <!-- ================================================================
-       NOTIFICATION AREA
-       Transient toasts appended by renderer.renderNotification().
-       Lives outside panels so it's always on top.
-       ================================================================ -->
+  <div id="connection-banner" class="connection-banner" hidden>Connection lost — reconnecting…</div>
   <div id="notification-area" aria-live="polite" aria-atomic="false"></div>
+  <div id="mock-ribbon" class="mock-ribbon" hidden>Demo mode · mock data</div>
 
   <!-- ================================================================
-       JOIN PANEL
-       Shown on first load when no reconnect_token is in sessionStorage.
+       LANDING / JOIN
        ================================================================ -->
   <div id="join-panel">
-    <div class="join-card">
-      <h1 class="join-card__title">Bang!</h1>
-      <p class="join-card__subtitle">A multiplayer card game</p>
+    <div class="screen-inner">
+      <header class="brand">
+        <div class="brand__mark" aria-hidden="true">♠ ♥ ♦ ♣</div>
+        <h1 class="brand__title">Baron</h1>
+        <p class="brand__subtitle">Card game for friends. Any device, no install.</p>
+      </header>
 
-      <form id="join-form" novalidate>
-        <div class="form-group">
+      <form id="join-form" class="card-panel" novalidate>
+        <div class="field">
           <label for="display-name-input">Your name</label>
-          <input
-            id="display-name-input"
-            type="text"
-            placeholder="Wild Bill"
-            maxlength="32"
-            autocomplete="nickname"
-            required
-          />
+          <input id="display-name-input" type="text" placeholder="Enter a nickname"
+                 maxlength="32" autocomplete="nickname" autocapitalize="words" required />
         </div>
 
-        <div class="form-group">
-          <label for="room-id-input">
-            Room code
-            <span style="font-weight:normal; color:#888">(leave blank to create)</span>
-          </label>
-          <input
-            id="room-id-input"
-            type="text"
-            placeholder="abc123"
-            maxlength="16"
-            autocomplete="off"
-            spellcheck="false"
-          />
-        </div>
-
-        <button id="join-btn" class="btn" type="submit" style="width:100%">
-          Enter Saloon
+        <button id="create-btn" class="btn btn--block" type="submit" data-mode="create">
+          Create a room
         </button>
+
+        <div class="card-panel__divider">or join friends</div>
+
+        <div class="join-row">
+          <div class="field">
+            <label for="room-id-input">Room code</label>
+            <input id="room-id-input" type="text" placeholder="e.g. 7c0ce961" maxlength="16"
+                   autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+                   inputmode="text" />
+          </div>
+          <button id="join-btn" class="btn" type="submit" data-mode="join">Join</button>
+        </div>
       </form>
+
+      <div class="demo-link">
+        Just want to look around? Preview the UI with fake players — no server needed.
+        <br />
+        <button id="demo-btn" class="btn btn--ghost btn--small" type="button">Try the demo table</button>
+      </div>
     </div>
   </div>
 
   <!-- ================================================================
-       LOBBY PANEL
-       Shown after joining, before the game starts.
+       LOBBY
        ================================================================ -->
   <div id="lobby-panel" hidden>
-    <h2 class="lobby-title">Waiting Room</h2>
+    <div class="screen-inner">
+      <h2 class="lobby-title">Waiting room</h2>
 
-    <div class="lobby-room-id">
-      Room: <span id="room-id-display">—</span>
+      <div class="lobby-code">
+        <span class="lobby-code__label">Room code</span>
+        <span id="room-id-display" class="lobby-code__value">—</span>
+        <button id="copy-link-btn" class="btn btn--ghost btn--small" type="button">Copy invite link</button>
+      </div>
+
+      <ul id="lobby-player-list" class="lobby-player-list"></ul>
+
+      <div class="lobby-actions">
+        <button id="start-game-btn" class="btn btn--block" hidden disabled>Start game</button>
+        <p class="lobby-hint" id="lobby-hint">Share the invite link with friends to let them join.</p>
+        <button id="leave-btn" class="btn btn--ghost btn--small" type="button">Leave room</button>
+      </div>
     </div>
-
-    <ul id="lobby-player-list" class="lobby-player-list"></ul>
-
-    <button id="start-game-btn" class="btn" hidden disabled>
-      Start Game
-    </button>
-
-    <p style="font-size:0.8rem; color:rgba(255,255,255,0.5); text-align:center; margin-top: 8px;">
-      Share the room code with friends to let them join.
-    </p>
   </div>
 
   <!-- ================================================================
-       GAME PANEL
-       The main table.  Hidden until game starts.
+       GAME TABLE
+       Grid areas (see css §5): hud / opponents / table / me / actions,
+       plus a chat sidebar (bottom sheet on phones).
        ================================================================ -->
   <div id="game-panel" hidden>
 
-    <!-- HUD bar across the top -->
-    <div class="hud" style="grid-area:hud">
+    <div class="hud">
       <div id="turn-indicator" class="turn-indicator">Waiting…</div>
-
-      <div class="hud__deck">
-        <span title="Cards in draw pile">🂠 <span id="deck-count">—</span></span>
-        <span title="Cards in discard pile">🗑 <span id="discard-count">—</span></span>
-      </div>
+      <button id="chat-toggle" class="hud__btn" type="button" aria-label="Open chat" aria-expanded="false">💬</button>
+      <button id="leave-game-btn" class="hud__btn hud__btn--danger" type="button" aria-label="Leave game">✕</button>
     </div>
 
-    <!-- Opponents ring -->
     <div id="opponents-area" aria-label="Other players"></div>
 
-    <!-- Local player row -->
+    <section class="table" aria-label="Table">
+      <div class="pile">
+        <div id="draw-pile" class="pile-slot draw-pile" aria-label="Draw pile"></div>
+        <span class="pile__label">Deck <b id="deck-count">—</b></span>
+      </div>
+      <div class="pile">
+        <div id="discard-top" class="pile-slot discard-pile--empty" aria-label="Discard pile"></div>
+        <span class="pile__label">Discard <b id="discard-count">—</b></span>
+      </div>
+    </section>
+
     <div id="my-player-area">
-      <!-- Stats sidebar -->
       <div class="my-stats">
-        <div class="my-stats__name">You</div>
+        <span class="my-stats__name">You</span>
         <div class="my-hp-bar-wrap">
-          <div id="my-hp-bar" role="progressbar" aria-label="Your HP">
-            <div id="my-hp-bar-fill"></div>
-          </div>
+          <div id="my-hp-bar" role="progressbar" aria-label="Your HP"><div id="my-hp-bar-fill"></div></div>
           <span id="my-hp-display">—</span>
         </div>
-        <!-- Role card, shown once assigned -->
         <div id="role-panel" hidden></div>
       </div>
-
-      <!-- Hand cards -->
       <div id="hand-area" aria-label="Your hand"></div>
-
-      <!-- Deck + discard stack (visible on desktop, collapsed on mobile) -->
-      <div class="deck-area" aria-label="Deck">
-        <div class="deck-pile card--face-down">
-          <div class="card__back"></div>
-        </div>
-        <div id="discard-top" class="discard-pile--empty" aria-label="Discard pile top"></div>
-      </div>
     </div>
 
-    <!-- Action bar -->
     <div id="action-bar" class="action-bar--inactive">
-      <button class="btn" data-action="draw"
-              aria-label="Draw 2 cards" hidden>
-        Draw
-      </button>
-
-      <button class="btn" data-action="end-turn"
-              aria-label="End your turn" hidden>
-        End Turn
-      </button>
-
-      <!--
-        Discard phase: the player clicks cards in hand directly.
-        No dedicated button needed — hand-card clicks emit ui:card_clicked
-        which controller routes to discard when phase === "discard".
-      -->
-
-      <button class="btn" data-action="request-sync"
-              title="Re-sync game state from server"
-              style="background:transparent; border:1px solid rgba(255,255,255,0.2); font-size:0.7rem; padding:4px 8px">
-        ↻ Sync
-      </button>
+      <button class="btn" data-action="draw" aria-label="Draw cards" hidden>Draw</button>
+      <button class="btn" data-action="end-turn" aria-label="End your turn" hidden>End turn</button>
+      <button class="btn btn--ghost btn--small" data-action="request-sync" aria-label="Re-sync from server">↻</button>
     </div>
 
-    <!-- Sidebar: chat + (on desktop) deck area -->
-    <aside class="sidebar">
-      <!-- Deck and discard at top of sidebar on desktop -->
-      <div class="deck-area" style="flex-direction:row; justify-content:center; gap:8px; padding:8px">
-        <div class="deck-pile" style="min-width:var(--card-w); height:var(--card-h)">
-          <div class="card__back" style="border-radius: var(--card-radius);"></div>
-        </div>
-        <div id="discard-top-sidebar" aria-label="Top of discard pile"></div>
+    <aside class="sidebar" id="chat-sheet" aria-label="Chat">
+      <div class="sidebar__head">
+        <span>Chat</span>
+        <button class="hud__btn sidebar__close" id="chat-close" type="button" aria-label="Close chat">✕</button>
       </div>
-
-      <!-- Chat -->
       <div class="chat-panel">
-        <div id="chat-messages" aria-live="polite" aria-label="Chat messages"></div>
-
+        <div id="chat-messages" aria-live="polite"></div>
         <form id="chat-form" aria-label="Send chat message">
-          <input
-            id="chat-input"
-            type="text"
-            placeholder="Say something…"
-            maxlength="256"
-            autocomplete="off"
-          />
+          <input id="chat-input" type="text" placeholder="Say something…" maxlength="256" autocomplete="off" />
         </form>
       </div>
     </aside>
+  </div>
 
-  </div><!-- /#game-panel -->
-
-  <!-- ================================================================
-       OVERLAYS
-       Rendered into by renderer.renderGameOver() and renderReactionWindow().
-       Both hidden by default; renderer sets hidden=false when needed.
-       ================================================================ -->
-
-  <!-- Game over / results -->
   <div id="game-overlay" hidden aria-modal="true" role="dialog" aria-label="Game over"></div>
-
-  <!-- Missed! reaction window -->
   <div id="reaction-overlay" hidden aria-modal="true" role="dialog" aria-label="React to incoming attack"></div>
 
-  <!-- ================================================================
-       APP ENTRY POINT
-       type="module" enables ES module imports.
-       defer is implied by modules but stated for clarity.
-       ================================================================ -->
-  <script type="module" src="/js/app.js"></script>
-
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

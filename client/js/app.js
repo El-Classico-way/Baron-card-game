@@ -35,6 +35,7 @@
 
 import { bus }         from "./core/events.js";
 import { SocketClient } from "./core/socket.js";
+import { MockSocket }   from "./mock/mock-socket.js";
 import { Store }        from "./core/store.js";
 import { Renderer }     from "./game/renderer.js";
 import { Controller }   from "./game/controller.js";
@@ -66,8 +67,10 @@ function boot() {
   // 3. Store
   const store = new Store();
 
-  // 4. Socket
-  const socket = new SocketClient(SERVER_URL, bus);
+  // 4. Socket — real server, or the in-browser mock when opened with ?mock
+  //    (?mock=1 → demo lobby, ?mock=table → straight to the table, &bots=N).
+  const mock = _mockOptions();
+  const socket = mock ? new MockSocket(mock) : new SocketClient(SERVER_URL, bus);
 
   // 5. Renderer
   const renderer = new Renderer(store, elements);
@@ -82,9 +85,22 @@ function boot() {
   _wireJoinForm(elements, socket);
   _wireLobbyControls(elements, socket, store);
   _wireChatForm(elements);
+  _wireChatSheet();
   _wireActionBar(elements);
+  _wireLeaveButtons(socket);
+  on(document.getElementById("demo-btn"), "click", () => {
+    location.search = "?mock=1";
+  });
 
-  // 9. Try to resume session from sessionStorage
+  // 9. Mock mode skips the landing page; otherwise try to resume a session.
+  if (mock) {
+    const ribbon = document.getElementById("mock-ribbon");
+    if (ribbon) ribbon.hidden = false;
+    document.body.classList.add("has-ribbon");
+    _showPanel(elements, "lobby");
+    socket.connect("DEMO", "You");
+    return;
+  }
   const resumed = socket.tryResume();
 
   // 10. If no session, show join panel
@@ -114,19 +130,26 @@ function _wireJoinForm(elements, socket) {
   on(joinForm, "submit", (e) => {
     e.preventDefault();
 
-    const roomId     = roomIdInput?.value.trim();
+    const roomId      = roomIdInput?.value.trim();
     const displayName = displayNameInput?.value.trim();
+    // Two submit buttons: "Create a room" and "Join". Enter in the code
+    // field joins, Enter in the name field creates.
+    const mode = e.submitter?.dataset.mode ?? (roomId ? "join" : "create");
 
     if (!displayName) {
-      _showFormError(joinForm, "Please enter a display name.");
+      _showFormError(joinForm, "Please enter a name first.");
+      displayNameInput?.focus();
       return;
     }
 
-    if (roomId) {
-      // Join specific room
+    if (mode === "join") {
+      if (!roomId) {
+        _showFormError(joinForm, "Enter the room code your friend sent you.");
+        roomIdInput?.focus();
+        return;
+      }
       socket.connect(roomId, displayName);
     } else {
-      // Create a new room via HTTP, then connect.
       _createRoomAndConnect(socket, displayName);
     }
   });
@@ -134,13 +157,13 @@ function _wireJoinForm(elements, socket) {
 
 async function _createRoomAndConnect(socket, displayName) {
   try {
-    const res  = await fetch("/lobby/rooms", { method: "POST" });
+    const res  = await fetch("lobby/rooms", { method: "POST" });
     const data = await res.json();
 
     if (!data.room_id) throw new Error("No room_id in response");
 
     // Update URL so the user can share it.
-    history.replaceState({}, "", `/?room=${encodeURIComponent(data.room_id)}`);
+    history.replaceState({}, "", `?room=${encodeURIComponent(data.room_id)}`);
 
     socket.connect(data.room_id, displayName);
   } catch (err) {
@@ -186,6 +209,8 @@ function _wireLobbyControls(elements, socket, store) {
       bus.emit("ui:start_game_clicked", {});
     });
   }
+
+  on(document.getElementById("copy-link-btn"), "click", () => _shareInvite(store));
 
   // When the server transitions us to playing, show the game panel.
   bus.on("store:game_started", () => _showPanel(elements, "game"));
@@ -251,4 +276,59 @@ if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", boot);
 } else {
   boot();
+}
+
+
+// ---------------------------------------------------------------------------
+// Mock mode, invite link, chat sheet, leave
+// ---------------------------------------------------------------------------
+
+function _mockOptions() {
+  // Static preview builds (tools/build_preview.py) can't rely on a query string.
+  if (window.BARON_MOCK) return { bots: 3, autostart: false, ...(window.BARON_MOCK === true ? {} : window.BARON_MOCK) };
+  const params = new URLSearchParams(location.search);
+  if (!params.has("mock")) return null;
+  const bots = parseInt(params.get("bots") ?? "3", 10);
+  return { bots: Number.isFinite(bots) ? bots : 3, autostart: params.get("mock") === "table" };
+}
+
+async function _shareInvite(store) {
+  const roomId = store.state.roomId;
+  if (!roomId) return;
+  const url = `${location.origin}${location.pathname}?room=${encodeURIComponent(roomId)}`;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: "Join my game", url });
+      return;
+    }
+    await navigator.clipboard.writeText(url);
+    bus.emit("store:notification", { message: "Invite link copied", type: "success", id: Date.now() });
+  } catch (err) {
+    if (err?.name === "AbortError") return;   // user dismissed the share sheet
+    window.prompt("Copy this invite link:", url);
+  }
+}
+
+function _wireChatSheet() {
+  const sheet  = document.getElementById("chat-sheet");
+  const toggle = document.getElementById("chat-toggle");
+  const close  = document.getElementById("chat-close");
+  if (!sheet || !toggle) return;
+  const set = (open) => {
+    sheet.classList.toggle("is-open", open);
+    toggle.setAttribute("aria-expanded", String(open));
+  };
+  on(toggle, "click", () => set(!sheet.classList.contains("is-open")));
+  on(close,  "click", () => set(false));
+}
+
+function _wireLeaveButtons(socket) {
+  const leave = () => {
+    socket.disconnect();                    // also clears the stored session
+    location.href = location.pathname;      // back to the landing page
+  };
+  on(document.getElementById("leave-btn"), "click", leave);
+  on(document.getElementById("leave-game-btn"), "click", () => {
+    if (window.confirm("Leave this game?")) leave();
+  });
 }

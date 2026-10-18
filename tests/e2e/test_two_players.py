@@ -9,7 +9,9 @@ def _join(page, base_url, name, room_id=""):
     page.fill("#display-name-input", name)
     if room_id:
         page.fill("#room-id-input", room_id)
-    page.click("#join-btn")
+        page.click("#join-btn")
+    else:
+        page.click("#create-btn")
     expect(page.locator("#lobby-panel")).to_be_visible()
 
 
