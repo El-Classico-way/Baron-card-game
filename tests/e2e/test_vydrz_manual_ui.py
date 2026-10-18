@@ -33,7 +33,7 @@ def _plan_all(page):
 
 
 def _wait_for_entry_open(page):
-    page.wait_for_function("document.querySelector('[data-field]') && !document.querySelector('[data-field]').disabled", timeout=20000)
+    page.wait_for_function("document.querySelector('[data-submit]') && !document.querySelector('[data-submit]').disabled", timeout=20000)
 
 
 def _correct(page):
@@ -41,15 +41,25 @@ def _correct(page):
     return page.evaluate("window.__app.socket._vydrz.calc.correct.me")
 
 
-def _enter(page, value):
-    page.click("[data-field]")
+def _set_value(page, value):
+    """Type a number on the pad (opened by its icon) and apply it to the field."""
+    page.click("[data-numpad-open]")
     expect(page.locator(".np__panel")).to_be_visible()
+    for _ in range(4):
+        page.click('[data-key="back"]')                  # clear whatever is there
     if value < 0:
         page.click('[data-key="sign"]')
     for ch in str(abs(value)):
         page.click(f'[data-key="{ch}"]')
     page.click('[data-key="enter"]')
     expect(page.locator(".np__panel")).to_have_count(0)
+    expect(page.locator("[data-value]")).to_have_text(str(value).replace("-", "\u2212"))
+
+
+def _enter(page, value):
+    """Set the number, then confirm it with the Enter button under the field."""
+    _set_value(page, value)
+    page.click("[data-submit]")
 
 
 def _no_hscroll(page):
@@ -114,24 +124,45 @@ def test_calculating_shows_pair_drinks_and_numpad(page, base_url):
     page.keyboard.press("Escape")
     expect(page.locator("#card-inspector")).to_be_hidden()
 
-    # The number pad replaces the keyboard: nothing editable gets focus.
-    page.click("[data-field]")
-    expect(page.locator(".np__panel")).to_be_visible()
-    page.wait_for_timeout(350)                                          # let the slide-in finish
-    assert page.locator(".np__panel input").count() == 0
-    assert page.evaluate("!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)")
-    box = page.locator(".np__key--enter").bounding_box()
-    assert box["height"] >= 44 and box["y"] + box["height"] <= page.viewport_size["height"] + 1
-    page.click('[data-key="4"]'); page.click('[data-key="2"]'); page.click('[data-key="sign"]')
-    expect(page.locator("#np-display")).to_have_text("−42")
-    page.click('[data-key="back"]')
-    expect(page.locator("#np-display")).to_have_text("−4")
-    page.click('[data-key="back"]'); page.click('[data-key="back"]')
-    expect(page.locator("#np-display")).to_have_text("–")                  # empty
-    page.click('[data-key="enter"]')
-    expect(page.locator(".np__panel")).to_be_visible()                    # Enter does nothing while empty
-    page.click(".np__panel [data-close]")
+    # The field is [ - | number | + ] with a small number-pad icon; Enter sits underneath.
+    expect(page.locator("[data-value]")).to_have_text("0")
+    page.click('[data-step="1"]'); page.click('[data-step="1"]'); page.click('[data-step="1"]')
+    expect(page.locator("[data-value]")).to_have_text("3")
+    page.click('[data-step="-1"]')
+    page.click('[data-step="-1"]'); page.click('[data-step="-1"]'); page.click('[data-step="-1"]')
+    expect(page.locator("[data-value]")).to_have_text("\u22121")        # keeps counting below zero
+    assert page.locator('[data-step="1"]').bounding_box()["height"] >= 44
+    enter_box = page.locator("[data-submit]").bounding_box()
+    step_box = page.locator('[data-step="1"]').bounding_box()
+    assert enter_box["y"] > step_box["y"] + step_box["height"] - 1          # Enter is below the field
+
+    # The number pad opens ONLY from its icon, never from the number itself.
+    page.locator("[data-value]").click()
     expect(page.locator(".np__panel")).to_have_count(0)
+    page.click("[data-numpad-open]")
+    expect(page.locator(".np__panel")).to_be_visible()
+    page.wait_for_timeout(350)                                           # let the slide-in finish
+    assert page.locator(".np__panel input").count() == 0                 # no text input, so no system keyboard
+    assert page.evaluate("!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)")
+    key = page.locator(".np__key--enter").bounding_box()
+    assert key["height"] >= 44 and key["y"] + key["height"] <= page.viewport_size["height"] + 1
+    expect(page.locator("#np-display")).to_have_text("\u22121")           # starts from the current value
+    page.click('[data-key="back"]'); page.click('[data-key="back"]')
+    expect(page.locator("#np-display")).to_have_text("–")
+    page.click('[data-key="4"]'); page.click('[data-key="2"]')
+    expect(page.locator("#np-display")).to_have_text("42")
+    page.click('[data-key="sign"]')
+    expect(page.locator("#np-display")).to_have_text("\u221242")
+    page.click('[data-key="enter"]')                                     # applies the number, does NOT send it
+    expect(page.locator(".np__panel")).to_have_count(0)
+    expect(page.locator("[data-value]")).to_have_text("\u221242")
+    expect(page.locator("[data-submit]")).to_be_enabled()                # still waiting for the Enter button
+    page.click('[data-step="1"]')                                        # and it can be adjusted afterwards
+    expect(page.locator("[data-value]")).to_have_text("\u221241")
+    page.click("[data-numpad-open]")
+    page.click(".np__panel [data-close]")                                # closing the pad changes nothing
+    expect(page.locator(".np__panel")).to_have_count(0)
+    expect(page.locator("[data-value]")).to_have_text("\u221241")
     assert not page.js_errors
 
 
@@ -146,20 +177,21 @@ def test_correct_low_and_high_entries_show_the_right_tags(page, base_url):
     _enter(page, right - 2)
     me_row = page.locator(".vm-row", has_text="Ty")
     expect(me_row.locator(".vm-tag--blbec")).to_have_text("Blbec")
-    expect(page.locator(".vm-field")).to_contain_text("zadáno")
-    expect(page.locator("[data-field]")).to_be_disabled()                  # one entry only
+    expect(page.locator("[data-submit]")).to_have_text("Odesláno")
+    expect(page.locator("[data-submit]")).to_be_disabled()                 # one entry only
+    expect(page.locator('[data-step="1"]')).to_be_disabled()
     expect(page.locator("#vm-bar button[data-act='next']")).to_be_visible(timeout=20000)
     expect(page.locator(".vm-row.is-winner, .vr__outcome").first).to_be_visible()
     expect(page.locator(".vm-row__right").first).to_contain_text("správně")   # the right numbers are shown afterwards
     page.click('[data-act="next"]')
 
-    # Round 2: higher -> "Švindlíř", counted as 0.
+    # Round 2: higher -> "Švindlíř", counted as -50.
     _wait_for_entry_open(page)
     right = _correct(page)
     _enter(page, right + 3)
     row = page.locator(".vm-row", has_text="Ty")
     expect(row.locator(".vm-tag--svindlir")).to_have_text("Švindlíř")
-    expect(row.locator(".vm-row__val")).to_have_text("0")
+    expect(row.locator(".vm-row__val")).to_have_text("\u221250")
     expect(page.locator('[data-act="next"]')).to_be_visible(timeout=20000)
     page.click('[data-act="next"]')
 
@@ -173,7 +205,7 @@ def test_correct_low_and_high_entries_show_the_right_tags(page, base_url):
     assert not page.js_errors
 
 
-def test_keyboard_works_on_the_number_pad(page, base_url):
+def test_physical_keyboard_works_without_opening_the_pad(page, base_url):
     if page.viewport_size["width"] < 900:
         pytest.skip("physical keyboard is a desktop feature")
     _manual_table(page, base_url, bots=1)
@@ -181,14 +213,15 @@ def test_keyboard_works_on_the_number_pad(page, base_url):
     page.click('[data-act="confirm"]')
     _wait_for_entry_open(page)
     right = _correct(page)
-    page.click("[data-field]")
     typed = str(right)
     for ch in typed:
         page.keyboard.press("Minus" if ch == "-" else ch)
-    expect(page.locator("#np-display")).to_have_text(typed.replace("-", "−"))
-    page.keyboard.press("Enter")
+    expect(page.locator("[data-value]")).to_have_text(typed.replace("-", "\u2212"))
+    page.keyboard.press("ArrowUp"); page.keyboard.press("ArrowDown")      # +1 / -1 steps
+    expect(page.locator("[data-value]")).to_have_text(typed.replace("-", "\u2212"))
     expect(page.locator(".np__panel")).to_have_count(0)
-    expect(page.locator(".vm-row", has_text="Ty").locator(".vm-row__val")).to_have_text(typed.replace("-", "−"))
+    page.keyboard.press("Enter")                                          # Enter confirms
+    expect(page.locator("[data-submit]")).to_have_text("Odesláno")
     assert page.locator(".vm-row", has_text="Ty").locator(".vm-tag").count() == 0     # typed the right number
 
 
@@ -203,11 +236,11 @@ def test_full_manual_game_reaches_the_final_ranking(page, base_url):
         while guard < 12:
             guard += 1
             page.wait_for_function(
-                "document.querySelector('[data-field]:not([disabled])') || document.querySelector('[data-act=\"next\"]') || document.querySelector('[data-act=\"leave\"]')",
+                "document.querySelector('[data-submit]:not([disabled])') || document.querySelector('[data-act=\"next\"]') || document.querySelector('[data-act=\"leave\"]')",
                 timeout=30000)
-            if page.locator("[data-field]:not([disabled])").count():
+            if page.locator("[data-submit]:not([disabled])").count():
                 _enter(page, _correct(page))                    # tie-breaks are counted by hand too
-                expect(page.locator("[data-field]")).to_be_disabled()   # wait until the server has taken the entry
+                expect(page.locator("[data-submit]")).to_be_disabled()   # wait until the server has taken the entry
             else:
                 break
         if rnd < 8:
@@ -250,7 +283,7 @@ def test_two_browsers_play_a_manual_round_on_the_real_server(browser, base_url):
         pg.wait_for_function("document.querySelectorAll('.vm-drinks__cards .vc--chlast[data-drink]').length === 3", timeout=20000)
         _wait_for_entry_open(pg)
 
-    # Alice cheats (far too high -> counts 0), Bob types a far too low number (counts as typed).
+    # Alice cheats (far too high -> counts -50), Bob types a lower number still (counts as typed).
     _enter(alice, 150)
     expect(bob.locator(".vm-row", has_text="Alice").locator(".vm-tag--svindlir")).to_be_visible(timeout=8000)   # public at once
     assert bob.locator(".vm-row", has_text="Bob").locator(".vm-row__val").inner_text() == "počítá…"
@@ -260,7 +293,7 @@ def test_two_browsers_play_a_manual_round_on_the_real_server(browser, base_url):
         expect(pg.locator(".vm-banner")).to_contain_text("výsledek", timeout=8000)
         expect(pg.locator(".vm-row", has_text="Alice").locator(".vm-tag--svindlir")).to_be_visible()
         expect(pg.locator(".vm-row", has_text="Bob").locator(".vm-tag--blbec")).to_be_visible()
-    expect(alice.locator(".vr__outcome")).to_contain_text("Alice")        # 0 beats -99
+    expect(alice.locator(".vr__outcome")).to_contain_text("Alice")        # -50 beats -99
     expect(bob.locator(".vr__waiting")).to_be_visible()                    # only the host continues
     alice.click('[data-act="next"]')
     for pg in (alice, bob):

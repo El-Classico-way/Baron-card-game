@@ -24,16 +24,23 @@ import { getSettings, updateSettings } from "./settings.js";
 import * as sfx from "./sound.js";
 
 const TAG_LABEL = { blbec: "Blbec", svindlir: "Švindlíř" };
+const MAX_VALUE = 999;
+const NUMPAD_ICON = `<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="currentColor">${
+  [4, 12, 20].flatMap(y => [4, 12, 20].map(x => `<circle cx="${x}" cy="${y}" r="2.1"/>`)).join("")}</svg>`;
 const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const signed = (n) => (n < 0 ? `−${Math.abs(n)}` : String(n));
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 export class ManualView {
-  /** @param {{ socket, inspector, numpad, getHostId, onLeave, openSettings }} deps */
-  constructor({ socket, inspector, numpad, getHostId, onLeave, openSettings }) {
+  /** @param {{ socket, inspector, numpad, dealIntro, getHostId, onLeave, openSettings }} deps */
+  constructor({ socket, inspector, numpad, dealIntro, getHostId, onLeave, openSettings }) {
     this._socket = socket;
     this._inspector = inspector;
     this._numpad = numpad;
+    this._dealIntro = dealIntro;
+    this._dealing = false;
+    this._dealtUids = new Set();
+    this._dealt = false;
     this._getHostId = getHostId;
     this._onLeave = onLeave;
     this._openSettings = openSettings;
@@ -44,6 +51,9 @@ export class ManualView {
     this._editing = false;                 // reopened a confirmed plan
     this._revealed = {};                   // draw_id -> number of drink cards turned over
     this._revealing = false;
+    this._value = 0;                       // the number being built with -/+ or the number pad
+    this._valueDraw = null;                // draw_id the value belongs to (reset on a new draw)
+    this._fresh = true;                    // next typed digit replaces the value
 
     const $ = (id) => document.getElementById(id);
     this._el = { panel: $("vm-panel"), title: $("vm-title"), players: $("vm-players"), stage: $("vm-stage"), bar: $("vm-bar"), sheet: $("vy-sheet") };
@@ -60,8 +70,10 @@ export class ManualView {
     const wasLongPress = onLongPress(stage, ".vm-card[data-uid]", (el) => this._inspectNode(el));
     stage.addEventListener("click", (e) => {
       if (wasLongPress()) return;
-      const field = e.target.closest("[data-field]");
-      if (field) { this._openNumpad(); return; }
+      const step = e.target.closest("[data-step]");
+      if (step) { this._step(parseInt(step.dataset.step, 10)); return; }
+      if (e.target.closest("[data-numpad-open]")) { this._openNumpad(); return; }
+      if (e.target.closest("[data-submit]")) { this._submitValue(); return; }
       const inspect = e.target.closest("[data-inspect]");
       if (inspect) { this._inspectNode(inspect.closest(".vy-slot, .vm-card")); return; }
       const slot = e.target.closest(".vy-slot[data-kind]");
@@ -86,6 +98,7 @@ export class ManualView {
          next: () => this._socket.send("vydrz_next_round"),
          leave: () => this._onLeave() })[btn.dataset.act]?.();
     });
+    document.addEventListener("keydown", (e) => this._onKey(e));
     document.getElementById("vm-settings-btn")?.addEventListener("click", () => this._openSettings());
     document.getElementById("vm-leave-btn")?.addEventListener("click", () => { if (window.confirm("Opustit hru?")) this._onLeave(); });
   }
@@ -111,8 +124,35 @@ export class ManualView {
     } else if (prevPhase === "planning") {
       this._editing = false;
     }
+    const deal = state.phase === "planning" && !this._dealt && getSettings().deal;
+    if (state.phase === "planning") this._dealt = true;
+    if (deal) { this._dealing = true; this._dealtUids.clear(); }
     this.render();
+    if (deal) requestAnimationFrame(() => this._runDeal());
     this._maybeRevealDrinks();
+  }
+
+  /** The 16 cards are shown pair by pair (see deal-intro.js), then land in the hand. */
+  async _runDeal() {
+    const me = this._me();
+    const slotOf = (kind, uid) => this._el.stage.querySelector(`.vy-slot[data-uid="${CSS.escape(uid)}"]`);
+    await this._dealIntro.play({
+      pairs: me.locations.map((l, i) => ({ lokace: l, existence: me.existences[i] })),
+      counts: { lokace: this._state.decks.lokace, existence: this._state.decks.existence },
+      getSlot: slotOf,
+      onLand: (uid) => {
+        this._dealtUids.add(uid);
+        const slot = slotOf("", uid);
+        if (slot) { slot.classList.remove("is-undealt"); slot.classList.add("is-dealt-pop"); }
+      },
+      prepare: () => {
+        const scroller = this._el.stage.closest(".vy-scroll");
+        const section = this._el.stage.querySelector(".vy-hand-sec");
+        if (scroller && section) scroller.scrollTop = section.offsetTop - 8;
+      },
+    });
+    this._dealing = false;
+    if (this._state?.phase === "planning") this.render();
   }
 
   render() {
@@ -176,7 +216,8 @@ export class ManualView {
       return `<section class="vy-hand-sec"><h3>${label} (${cards.length})</h3><div class="vy-hand">${
         cards.map((c) => {
           const sel = this._sel[kind] === c.uid;
-          return `<div class="vy-slot${sel ? " is-selected" : ""}${locked ? " is-locked" : ""}" data-kind="${kind}" data-uid="${esc(c.uid)}">
+          const undealt = this._dealing && !this._dealtUids.has(c.uid);
+          return `<div class="vy-slot${sel ? " is-selected" : ""}${locked ? " is-locked" : ""}${undealt ? " is-undealt" : ""}" data-kind="${kind}" data-uid="${esc(c.uid)}">
             ${front(c, { extra: "vc--hand vm-card" })}
             ${sel ? `<button class="vy-inspect" type="button" data-inspect aria-label="Zvětšit kartu">🔍</button>` : ""}
           </div>`;
@@ -249,11 +290,18 @@ export class ManualView {
 
     const entered = c.entries[s.you];
     const canType = mine && !entered && !this._revealing;
+    if (this._valueDraw !== c.draw_id) { this._valueDraw = c.draw_id; this._value = 0; this._fresh = true; }
+    const shown = entered ? entered.value : this._value;
     const field = mine ? `<section class="vm-entry"><h3>Tvoje číslo</h3>
-        <button class="vm-field${canType ? "" : " is-off"}" type="button" data-field ${canType ? "" : "disabled"}>
-          ${entered ? `<b>${signed(entered.value)}</b><small>zadáno</small>`
-                    : this._revealing ? `<small>počkej na chlast…</small>` : `<b>?</b><small>klepni a zadej</small>`}
-        </button></section>` : "";
+        <div class="vm-stepper${canType ? "" : " is-off"}">
+          <button class="vm-step" type="button" data-step="-1" aria-label="Mínus 1" ${canType ? "" : "disabled"}>\u2212</button>
+          <div class="vm-value" data-value role="status" aria-live="polite">${esc(signed(shown))}</div>
+          <button class="vm-step" type="button" data-step="1" aria-label="Plus 1" ${canType ? "" : "disabled"}>+</button>
+          <button class="vm-numpad-btn" type="button" data-numpad-open aria-label="Otevřít číselník" ${canType ? "" : "disabled"}>${NUMPAD_ICON}</button>
+        </div>
+        <button class="btn btn--block vm-enter" type="button" data-submit ${canType ? "" : "disabled"}>${
+          entered ? "Odesláno" : this._revealing ? "Počkej na chlast…" : "Potvrdit ↵"}</button>
+      </section>` : "";
 
     const rows = c.participants.map((pid) => {
       const e = c.entries[pid];
@@ -300,15 +348,71 @@ export class ManualView {
     this.render();
   }
 
+  /** True while the player may change / send their number. */
+  _canEnter() {
+    const c = this._state?.calc;
+    return !!c && this._state.phase === "calculating" && c.participants.includes(this._state.you) && !c.entered && !this._revealing;
+  }
+
+  _paintValue() {
+    const el = this._el.stage.querySelector("[data-value]");
+    if (el) el.textContent = signed(this._value);
+  }
+
+  _step(delta) {
+    if (!this._canEnter()) return;
+    this._value = Math.max(-MAX_VALUE, Math.min(MAX_VALUE, this._value + delta));
+    this._fresh = true;
+    sfx.unlockAudio(); sfx.tick(delta, this._value);
+    this._paintValue();
+  }
+
   _openNumpad() {
-    const c = this._state.calc;
-    if (!c || c.entered || this._revealing) return;
+    if (!this._canEnter()) return;
     sfx.unlockAudio();
+    const c = this._state.calc;
     this._numpad.open({
       title: "Tvoje číslo",
       hint: c.tiebreak ? "Stat tvé postavy u vytaženého chlastu." : "Součet statů všech tří chlastů na tvých kartách.",
-      onSubmit: (n) => this._socket.send("vydrz_submit", { value: n }),
+      initial: this._value,
+      confirmLabel: "Použít ↵",
+      onSubmit: (n) => { this._value = n; this._fresh = true; this._paintValue(); },   // sending is the Enter button's job
     });
+  }
+
+  _submitValue() {
+    if (!this._canEnter()) return;
+    sfx.unlockAudio();
+    this._socket.send("vydrz_submit", { value: this._value });
+  }
+
+  /** Physical keyboard (computers): digits, -, Backspace, arrows and Enter. */
+  _onKey(e) {
+    if (this._el.panel.hidden || !this._canEnter() || this._numpad.isOpen) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName ?? "")) return;
+    if (["card-inspector", "vy-sheet", "vy-settings"].some(id => document.getElementById(id)?.hidden === false)) return;
+    const k = e.key;
+    if (/^[0-9]$/.test(k)) {
+      const neg = this._value < 0;
+      const mag = this._fresh ? 0 : Math.abs(this._value);
+      const next = Math.min(MAX_VALUE, mag * 10 + parseInt(k, 10));
+      this._value = neg ? -next : next;
+      this._fresh = false;
+    } else if (k === "-" || k === "_") {
+      this._value = -this._value; this._fresh = false;
+    } else if (k === "Backspace") {
+      this._value = Math.trunc(this._value / 10); this._fresh = false;
+    } else if (k === "ArrowUp" || k === "ArrowRight" || k === "+" || k === "=") {
+      this._step(1); e.preventDefault(); return;
+    } else if (k === "ArrowDown" || k === "ArrowLeft") {
+      this._step(-1); e.preventDefault(); return;
+    } else if (k === "Enter") {
+      e.preventDefault(); this._submitValue(); return;
+    } else return;
+    e.preventDefault();
+    sfx.unlockAudio(); sfx.pop();
+    this._paintValue();
   }
 
   // ------------------------------------------------------------------ reveal

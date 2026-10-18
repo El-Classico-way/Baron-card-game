@@ -178,7 +178,7 @@ def test_slower_speed_stretches_the_counting(page, base_url):
     durations = {}
     for speed in (1, 4):
         _table(page, base_url, bots=1)
-        page.evaluate(f"localStorage.setItem('baron.settings', JSON.stringify({{sound: false, speed: {speed}}}))")
+        page.evaluate(f"localStorage.setItem('baron.settings', JSON.stringify({{sound: false, speed: {speed}, deal: false}}))")
         page.reload()
         expect(page.locator("#vydrz-panel")).to_be_visible(timeout=8000)
         _pick_and_confirm(page)

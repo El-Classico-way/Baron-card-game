@@ -238,7 +238,7 @@ def test_manual_vydrz_over_websocket():
             assert len(sa2["calc"]["drinks"]) == 3 and sa2["calc"]["mine"] is not None
 
             # Typing a number: the server decides what it means. A huge number is "svindlir"
-            # (counts as 0); two cheaters tie at 0, which starts a manual tie-break.
+            # (counts as -50); two cheaters tie at -50, which starts a manual tie-break.
             a.send_json({"type": "vydrz_submit", "payload": {"value": 150}})
             assert _drain_until(a, "action_ack")["payload"]["action"] == "vydrz_submit"
             a.send_json({"type": "vydrz_submit", "payload": {"value": 5}})

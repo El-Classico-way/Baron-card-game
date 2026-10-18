@@ -32,9 +32,9 @@ export class Numpad {
   }
 
   /**
-   * @param {{ title: string, hint?: string, initial?: number|null, onSubmit: (n:number)=>void }} opts
+   * @param {{ title: string, hint?: string, initial?: number|null, confirmLabel?: string, onSubmit: (n:number)=>void }} opts
    */
-  open({ title, hint = "", initial = null, onSubmit }) {
+  open({ title, hint = "", initial = null, confirmLabel = "Potvrdit ↵", onSubmit }) {
     this._submit = onSubmit;
     this._neg = initial != null && initial < 0;
     this._digits = initial != null ? String(Math.abs(initial)) : "";
@@ -51,7 +51,7 @@ export class Numpad {
           <button type="button" class="np__key np__key--aux" data-key="sign" aria-label="Změnit znaménko">±</button>
           <button type="button" class="np__key" data-key="0">0</button>
           <button type="button" class="np__key np__key--aux" data-key="back" aria-label="Smazat">⌫</button>
-          <button type="button" class="np__key np__key--enter" data-key="enter">Potvrdit ↵</button>
+          <button type="button" class="np__key np__key--enter" data-key="enter">${esc(confirmLabel)}</button>
         </div>
       </div>`;
     this._root.setAttribute("aria-labelledby", "np-title");

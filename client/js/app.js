@@ -39,6 +39,7 @@ import { CardInspector } from "./ui/card-inspector.js";
 import { VydrzView }     from "./vydrz/view.js";
 import { ManualView }    from "./vydrz/manual-view.js";
 import { Numpad }        from "./vydrz/numpad.js";
+import { DealIntro }     from "./vydrz/deal-intro.js";
 import { MockSocket }   from "./mock/mock-socket.js";
 import { Store }        from "./core/store.js";
 import { Renderer }     from "./game/renderer.js";
@@ -89,14 +90,15 @@ function boot() {
   const inspector = new CardInspector(store, elements);
 
   // Výdrž table (rendered only when the server runs that mode).
+  const dealIntro = new DealIntro(document.getElementById("deal-intro"));
   const vydrz = new VydrzView({
-    socket, inspector,
+    socket, inspector, dealIntro,
     getHostId: () => store.state.lobby.hostPlayerId,
     onLeave: () => _leave(socket),
   });
   const openSettings = () => vydrz._openSettings();
   new ManualView({
-    socket, inspector, openSettings,
+    socket, inspector, openSettings, dealIntro,
     numpad: new Numpad(document.getElementById("vm-keypad")),
     getHostId: () => store.state.lobby.hostPlayerId,
     onLeave: () => _leave(socket),

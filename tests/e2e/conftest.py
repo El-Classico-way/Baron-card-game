@@ -54,5 +54,17 @@ def browser():
             b = pw.chromium.launch()
         except Exception as exc:  # browser binary not installed
             pytest.skip(f"Chromium unavailable: {exc}")
+        # The opening deal takes ~10 s; most tests don't care, so contexts start with it
+        # switched off (a test can turn it on by setting its own `baron.settings`).
+        original = b.new_context
+
+        def new_context(*args, **kwargs):
+            ctx = original(*args, **kwargs)
+            ctx.add_init_script(
+                "try { if (!localStorage.getItem('baron.settings')) "
+                "localStorage.setItem('baron.settings', JSON.stringify({deal: false})); } catch (e) {}")
+            return ctx
+
+        b.new_context = new_context
         yield b
         b.close()

@@ -10,6 +10,7 @@
 import DATA from "./vydrz-data.js";
 
 const ROUNDS = 8;
+const CHEATER_VALUE = -50;      // what a "svindlir" entry counts as
 const shuffle = (a) => { const r = [...a]; for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; } return r; };
 const leaders = (vals, highest = true) => {
   const best = (highest ? Math.max : Math.min)(...Object.values(vals));
@@ -72,7 +73,7 @@ export class MockManual {
     if (c.entries[pid]) return "Už jsi číslo zadal(a).";
     const right = c.correct[pid];
     c.entries[pid] = value === right ? { entered: value, value, tag: null }
-      : value < right ? { entered: value, value, tag: "blbec" } : { entered: value, value: 0, tag: "svindlir" };
+      : value < right ? { entered: value, value, tag: "blbec" } : { entered: value, value: CHEATER_VALUE, tag: "svindlir" };
     if (Object.keys(c.entries).length === c.participants.length) this._complete();
     this._onChange();
     return "";

@@ -336,16 +336,30 @@
 .vm-mine__cards { display: flex; gap: 8px; padding: 0 12px; overflow-x: auto; }
 .vm-mine__cards .vc { --vc-w: min(29vw, 112px); }
 
-.vm-entry { padding: 0 12px; }
-.vm-field {
-  width: 100%; min-height: 76px; border-radius: 14px; border: 2px dashed var(--gold);
-  background: color-mix(in srgb, var(--gold) 10%, var(--surface)); color: var(--text);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+.vm-entry { padding: 0 12px; display: flex; flex-direction: column; gap: 10px; }
+.vm-stage .vm-entry > h3, .vm-stage .vm-table > h3 { padding-left: 0; padding-bottom: 0; }
+/* The number field: [ - | number | + ] in thirds, number-pad icon at the right edge. */
+.vm-stepper {
+  display: grid; grid-template-columns: 1fr 1fr 1fr auto; align-items: stretch; gap: 8px;
+  padding: 8px; border-radius: 16px; border: 2px dashed var(--gold);
+  background: color-mix(in srgb, var(--gold) 10%, var(--surface));
 }
-.vm-field b { font-family: var(--font-display); font-size: 2.2rem; line-height: 1; color: var(--gold-light); font-variant-numeric: tabular-nums; }
-.vm-field small { color: var(--text-dim); }
-.vm-field.is-off { border-style: solid; border-color: var(--line); background: var(--surface); }
-
+.vm-stepper.is-off { border-style: solid; border-color: var(--line); background: var(--surface); }
+.vm-step {
+  min-height: 72px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line);
+  font-size: 2.2rem; font-weight: 700; color: var(--text); line-height: 1;
+}
+.vm-step:active:not(:disabled) { transform: scale(.96); background: color-mix(in srgb, var(--gold) 25%, var(--surface-2)); }
+.vm-step:disabled, .vm-numpad-btn:disabled { opacity: .45; cursor: default; }
+.vm-value {
+  display: grid; place-items: center; min-width: 0; font-family: var(--font-display); font-size: 2.6rem; font-weight: 800;
+  color: var(--gold-light); font-variant-numeric: tabular-nums;
+}
+.vm-numpad-btn {
+  width: 52px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); color: var(--gold-light);
+  display: grid; place-items: center;
+}
+.vm-enter { min-height: 56px; }
 .vm-table { padding: 0 12px; }
 .vm-table > h3 { padding-left: 0; }
 .vm-rows { list-style: none; display: flex; flex-direction: column; gap: 6px; }
@@ -399,3 +413,39 @@
   .np__display { min-height: 52px; font-size: 2rem; }
 }
 #variant-box { display: flex; flex-direction: column; gap: 8px; }
+
+/* ---------- 6. Opening deal (both Výdrž variants) -------------------- */
+
+.di { position: fixed; inset: 0; z-index: 255; }
+.di__backdrop { position: absolute; inset: 0; background: rgba(4, 12, 8, .86); backdrop-filter: blur(3px); }
+.di__panel {
+  position: relative; height: 100%; max-width: 560px; margin: 0 auto;
+  padding: calc(var(--safe-t) + 10px) 14px calc(var(--safe-b) + 14px);
+  display: flex; flex-direction: column; gap: 14px;
+}
+.di__head { display: flex; align-items: center; gap: 10px; }
+.di__head h2 { flex: 1; font-family: var(--font-display); color: var(--gold-light); font-size: 1.25rem; }
+.di__count { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.di__piles { display: flex; justify-content: center; gap: 28px; }
+.di__pile { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: .8rem; color: var(--text-dim); }
+.di__pile b { color: var(--text); }
+.di__pilecard .vc { --vc-w: min(20vw, 84px); filter: drop-shadow(2px 2px 0 rgba(0,0,0,.4)) drop-shadow(4px 4px 0 rgba(0,0,0,.25)); }
+.di__stage { flex: 1; display: flex; align-items: center; justify-content: center; gap: 14px; }
+.di__spot { width: min(36vw, 150px); aspect-ratio: 5 / 7; border-radius: 12px; border: 2px dashed var(--line); }
+
+.di__card { position: fixed; perspective: 900px; pointer-events: none; z-index: 2; }
+.di__inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transform: rotateY(180deg); transition: transform .24s ease-in-out; }
+.di__card.is-flipped .di__inner { transform: rotateY(0); }
+.di__face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.di__face--back { transform: rotateY(180deg); }
+.di__card .vc { --vc-w: var(--di-w); width: var(--di-w); }
+
+.vy-slot.is-undealt, .vy-me__card.is-undealt { visibility: hidden; }
+.vy-slot.is-dealt-pop { animation: deal-pop .3s var(--anim-easing); }
+@keyframes deal-pop { from { transform: scale(.86); opacity: .4; } to { transform: none; opacity: 1; } }
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .di__piles { display: none; }
+  .di__spot { width: min(22vw, 120px); }
+}
+@media (prefers-reduced-motion: reduce) { .di__inner { transition: none; } }

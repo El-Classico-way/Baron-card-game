@@ -107,7 +107,7 @@ def test_correct_low_and_high_entries_are_tagged():
     t = g.last_result["table"]
     assert t["p1"] == {"value": right["p1"], "tag": None, "entered": right["p1"], "correct": right["p1"]}
     assert t["p2"]["tag"] == "blbec" and t["p2"]["value"] == right["p2"] - 2
-    assert t["p3"]["tag"] == "svindlir" and t["p3"]["value"] == 0 and t["p3"]["entered"] == right["p3"] + 5
+    assert t["p3"]["tag"] == "svindlir" and t["p3"]["value"] == -50 and t["p3"]["entered"] == right["p3"] + 5
 
 
 def test_entries_appear_in_the_public_table_immediately():
@@ -145,15 +145,15 @@ def test_highest_value_wins_the_round_and_scores_the_location_number():
         assert r["awarded"] == r["picks"][w]["lokace"]["number"] == g._player(w).score
 
 
-def test_cheater_gets_zero_and_cannot_win_with_it():
+def test_cheater_counts_as_minus_fifty_and_loses_the_round():
     g = make(2, seed=8)
     plan_in_hand_order(g)
-    # p1 cheats, p2 is right. p1 counts as 0.
+    # p1 cheats (counts as -50), p2 is right. A real sum is at most +-27, so p2 wins.
     g.action_submit("p1", correct_for(g, "p1") + 3)
     g.action_submit("p2", correct_for(g, "p2"))
-    # (a tie at 0 would start a tie-break, in which case the first table is in _steps)
-    t = (g.last_result or {}).get("table") or g._steps[0]["table"]
-    assert t["p1"]["value"] == 0 and t["p1"]["tag"] == "svindlir"
+    r = g.last_result
+    assert r["table"]["p1"]["value"] == -50 and r["table"]["p1"]["tag"] == "svindlir"
+    assert r["winner_id"] == "p2"
 
 
 def test_tie_is_broken_by_a_manual_single_drink_session():

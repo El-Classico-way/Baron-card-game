@@ -22,11 +22,14 @@ const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").
 
 export class VydrzView {
   /**
-   * @param {{ socket, inspector, getHostId: () => string|null, onLeave: () => void }} deps
+   * @param {{ socket, inspector, dealIntro, getHostId: () => string|null, onLeave: () => void }} deps
    */
-  constructor({ socket, inspector, getHostId, onLeave }) {
+  constructor({ socket, inspector, dealIntro, getHostId, onLeave }) {
     this._socket = socket;
     this._inspector = inspector;
+    this._dealIntro = dealIntro;
+    this._dealing = false;                             // opening deal in progress
+    this._dealtUids = new Set();                       // cards that have landed in the hand
     this._onLeave = onLeave;
     this._getHostId = getHostId;
     this._changing = false;                            // player reopened their confirmed pick
@@ -118,6 +121,8 @@ export class VydrzView {
       if (e.target.closest("[data-close]")) { settings.hidden = true; return; }
       const sound = e.target.closest("[data-set-sound]");
       if (sound) { updateSettings({ sound: sound.dataset.setSound === "on" }); sfx.unlockAudio(); sfx.pop(); this._renderSettings(); }
+      const deal = e.target.closest("[data-set-deal]");
+      if (deal) { updateSettings({ deal: deal.dataset.setDeal === "on" }); sfx.pop(); this._renderSettings(); }
       const speed = e.target.closest("[data-set-speed]");
       if (speed) { updateSettings({ speed: parseInt(speed.dataset.setSpeed, 10) }); sfx.unlockAudio(); sfx.tick(1, 0); this._renderSettings(); }
     });
@@ -169,9 +174,10 @@ export class VydrzView {
     const fresh = result && result.round > this._seenRound;
     if (fresh) this._holdScores = result.scores_before;
 
-    const deal = state.round === 1 && state.phase === "choosing" && !this._dealt;
+    const deal = state.round === 1 && state.phase === "choosing" && !this._dealt && getSettings().deal;
+    if (deal) { this._dealing = true; this._dealtUids.clear(); }      // hide the hand until the cards land
     this.render({ deal });
-    if (deal) this._dealt = true;
+    if (state.round === 1 && state.phase === "choosing") this._dealt = true;
     // The host started the next round: the old result is no longer relevant.
     if (state.phase === "choosing" && result && result.round < state.round && this._overlay.isOpen) this._overlay.close();
     if (fresh) this._playResult(result);
@@ -211,7 +217,7 @@ export class VydrzView {
     this._renderMe();
     this._renderHands();
     this._renderBar();
-    if (deal) requestAnimationFrame(() => this._dealAnimation());
+    if (deal) requestAnimationFrame(() => this._runDeal());
     if (this._sheetOpen()) this._renderPlayerSheet();
   }
 
@@ -260,7 +266,8 @@ export class VydrzView {
     const locked = this._state.phase !== "choosing" || this._locked();
     const draw = (cards, kind, front) => cards.map((c) => {
       const selected = this._sel[kind] === c.uid;
-      return `<div class="vy-slot${selected ? " is-selected" : ""}${locked ? " is-locked" : ""}">
+      const undealt = this._dealing && !this._dealtUids.has(c.uid);
+      return `<div class="vy-slot${selected ? " is-selected" : ""}${locked ? " is-locked" : ""}${undealt ? " is-undealt" : ""}" data-uid="${esc(c.uid)}">
         ${front(c, { extra: "vc--hand", attrs: `data-selected="${selected}"` })}
         ${selected ? `<button class="vy-inspect" type="button" data-inspect aria-label="Zvětšit kartu">🔍</button>` : ""}
       </div>`;
@@ -382,38 +389,36 @@ export class VydrzView {
         <h3>Zvuk</h3>
         <div class="seg"><button class="seg__btn${st.sound ? " is-on" : ""}" data-set-sound="on" type="button">Zapnutý</button>
           <button class="seg__btn${st.sound ? "" : " is-on"}" data-set-sound="off" type="button">Vypnutý</button></div>
+        <h3>Animace rozdávání karet</h3>
+        <div class="seg"><button class="seg__btn${st.deal ? " is-on" : ""}" data-set-deal="on" type="button">Zapnutá</button>
+          <button class="seg__btn${st.deal ? "" : " is-on"}" data-set-deal="off" type="button">Vypnutá</button></div>
       </div>`;
   }
 
-  // ------------------------------------------------------------ deal effect
+  // ------------------------------------------------------------ opening deal
 
-  /**
-   * Cards fly from the piles to the hand. The piles are visible on the table
-   * (see _renderTable), so this shows where the cards come from.
-   */
-  _dealAnimation() {
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    const groups = [
-      ["postava", this._el.me.querySelectorAll(".vc")],
-      ["lokace", this._el.locs.querySelectorAll(".vy-slot")],
-      ["existence", this._el.exs.querySelectorAll(".vy-slot")],
-    ];
-    let n = 0;
-    for (const [kind, nodes] of groups) {
-      const pile = this._el.piles.querySelector(`[data-pile="${kind}"] .vc`);
-      if (!pile) continue;
-      const from = pile.getBoundingClientRect();
-      nodes.forEach((node) => {
-        const to = node.getBoundingClientRect();
-        const dx = from.left + from.width / 2 - (to.left + to.width / 2);
-        const dy = from.top + from.height / 2 - (to.top + to.height / 2);
-        node.animate(
-          [{ transform: `translate(${dx}px, ${dy}px) scale(.45) rotate(-8deg)`, opacity: 0 },
-           { opacity: 1, offset: 0.15 },
-           { transform: "none", opacity: 1 }],
-          { duration: 520, delay: n++ * 55, easing: "cubic-bezier(.22,1,.36,1)", fill: "backwards" },
-        );
-      });
-    }
+  /** The 16 cards are shown pair by pair (see deal-intro.js), then land in the hand. */
+  async _runDeal() {
+    const me = this._me();
+    const slotOf = (kind, uid) => this._el[kind === "lokace" ? "locs" : "exs"].querySelector(`.vy-slot[data-uid="${CSS.escape(uid)}"]`);
+    await this._dealIntro.play({
+      pairs: me.locations.map((l, i) => ({ lokace: l, existence: me.existences[i] })),
+      counts: { lokace: this._state.decks.lokace, existence: this._state.decks.existence },
+      getSlot: slotOf,
+      onLand: (uid) => {
+        this._dealtUids.add(uid);
+        for (const kind of ["lokace", "existence"]) {
+          const slot = slotOf(kind, uid);
+          if (slot) { slot.classList.remove("is-undealt"); slot.classList.add("is-dealt-pop"); }
+        }
+      },
+      prepare: () => {
+        const scroller = this._el.locs.closest(".vy-scroll");
+        const section = this._el.locs.closest("section");
+        if (scroller && section) scroller.scrollTop = section.offsetTop - 8;
+      },
+    });
+    this._dealing = false;
+    this._renderHands();
   }
 }

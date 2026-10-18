@@ -3,11 +3,12 @@
  * may be unavailable (private mode), so every access is guarded.
  *
  *   sound     bool           sound effects on/off
+ *   deal      bool           animate the opening deal (pair by pair)
  *   speed     1..4           speed of the automatic counting animation:
  *                            1 = fastest (the original pace), 4 = slowest
  */
 const KEY = "baron.settings";
-const DEFAULTS = { sound: true, speed: 1 };
+const DEFAULTS = { sound: true, speed: 1, deal: true };
 
 /** Labels for speeds 1..4 and the factor applied to every pause of the animation. */
 export const SPEED_LABELS = ["Nejrychlejší", "Rychlá", "Pomalá", "Nejpomalejší"];

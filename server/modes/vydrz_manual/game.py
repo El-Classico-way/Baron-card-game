@@ -17,7 +17,7 @@ Flow
                  existence) and type it in. The server knows the right number:
                    equal  -> counted as entered
                    lower  -> counted as entered, tagged "blbec"
-                   higher -> counted as 0, tagged "svindlir"
+                   higher -> counted as -50, tagged "svindlir"
                  Entries are public as soon as they are made.
     when all have entered: the highest value wins the round and keeps the
     location (its number is added to their score). A tie is broken manually
@@ -49,6 +49,7 @@ DRINKS_PER_ROUND = 3
 MIN_PLAYERS, MAX_PLAYERS = 2, 7
 MAX_TIEBREAK_DRAWS = 30
 MAX_ENTRY = 200                      # sanity bound on a typed number
+CHEATER_VALUE = -50                  # what a "svindlir" entry counts as
 
 TAG_BLBEC = "blbec"
 TAG_SVINDLIR = "svindlir"
@@ -91,7 +92,7 @@ class _Player:
 @dataclass
 class _Entry:
     entered: int
-    value: int                                      # what counts (0 for a cheater)
+    value: int                                      # what counts (CHEATER_VALUE for a cheater)
     tag: str | None
 
 
@@ -200,7 +201,7 @@ class ManualVydrzGame:
         elif value < correct:
             c.entries[player_id] = _Entry(value, value, TAG_BLBEC)
         else:
-            c.entries[player_id] = _Entry(value, 0, TAG_SVINDLIR)
+            c.entries[player_id] = _Entry(value, CHEATER_VALUE, TAG_SVINDLIR)
         if len(c.entries) == len(c.participants):
             self._complete_session()
         return ActionResult.success()
