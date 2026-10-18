@@ -54,9 +54,10 @@ def test_mode_switch_in_lobby(page, base_url):
 def test_table_layout_and_card_readability(page, base_url):
     _table(page, base_url, bots=6)                    # 7 players
     _no_hscroll(page)
-    # All four card backs are on screen, with their counts.
-    for kind in ("postava", "chlast", "lokace", "existence"):
+    # The three inspectable decks and the drink deck are on screen, with their counts.
+    for kind in ("postava", "lokace", "existence"):
         expect(page.locator(f'.vy-pile[data-pile="{kind}"] .vc--back')).to_be_visible()
+    expect(page.locator(".vy-drawn__deck .vc--back-chlast")).to_be_visible()
     # Hand: 8 locations and 8 existences, each with 2-3 stat chips showing values.
     expect(page.locator("#vy-existences .vy-slot")).to_have_count(8)
     chips = page.locator("#vy-locations .vy-slot").first.locator(".vc-stat")
