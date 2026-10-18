@@ -99,7 +99,7 @@ function boot() {
     onConfirmLeave: () => leaveGame(socket),
   });
   const openSettings = () => vydrz._openSettings();
-  new ManualView({
+  const manual = new ManualView({
     socket, inspector, openSettings, dealIntro,
     numpad: new Numpad(document.getElementById("vm-keypad")),
     getHostId: () => store.state.lobby.hostPlayerId,
@@ -113,6 +113,8 @@ function boot() {
       if (btn && !btn.disabled) socket.send("set_mode", { mode: btn.dataset.mode });
     });
   }
+
+  _wireSessionEvents(socket, store, elements, [vydrz, manual]);
 
   // 8. Wire join / lobby forms
   _wireJoinForm(elements, socket);
@@ -148,6 +150,7 @@ function boot() {
   if (!resumed) {
     _showPanel(elements, "join");
     _prefillRoomFromUrl(elements);
+    _showFlash(elements);
   } else {
     // Show lobby/game panel depending on state — snapshot will arrive
     // shortly and renderer will switch panels automatically.
@@ -221,7 +224,7 @@ function _prefillRoomFromUrl(elements) {
   }
 }
 
-function _showFormError(form, message) {
+function _showFormError(form, message, ttl = 4000) {
   let errEl = form.querySelector(".form-error");
   if (!errEl) {
     errEl = document.createElement("p");
@@ -229,7 +232,7 @@ function _showFormError(form, message) {
     form.appendChild(errEl);
   }
   errEl.textContent = message;
-  setTimeout(() => errEl?.remove(), 4000);
+  setTimeout(() => errEl?.remove(), ttl);
 }
 
 // ---------------------------------------------------------------------------
@@ -251,7 +254,39 @@ function _wireLobbyControls(elements, socket, store) {
 
   // When the server transitions us to playing, show the game panel.
   bus.on("store:game_started", () => _showPanel(elements, "game"));
-  bus.on("store:joined",       () => _showPanel(elements, "lobby"));
+  // (Re)connecting must not pull someone out of a game that is on screen.
+  bus.on("store:joined", () => {
+    const inGame = ["vydrz-panel", "vm-panel", "game-panel"].some(id => document.getElementById(id)?.hidden === false);
+    if (!inGame) _showPanel(elements, "lobby");
+  });
+}
+
+const FLASH_KEY = "baron.flash";
+
+function _showFlash(elements) {
+  let msg = null;
+  try { msg = sessionStorage.getItem(FLASH_KEY); sessionStorage.removeItem(FLASH_KEY); } catch { /* no storage */ }
+  if (msg && elements.joinForm) _showFormError(elements.joinForm, msg, 12000);
+}
+
+/**
+ * Session-level events:
+ *  - the server refused the session for good (expired, name taken…) → back to the landing page with the reason;
+ *  - the host sent everybody back to the lobby → drop the finished game and show the lobby.
+ */
+function _wireSessionEvents(socket, store, elements, views) {
+  bus.on("socket:fatal", ({ message }) => {
+    try { sessionStorage.clear(); sessionStorage.setItem(FLASH_KEY, message || "Spojení s hrou se nepodařilo obnovit."); } catch { /* no storage */ }
+    try { history.replaceState({}, "", location.pathname); } catch { /* sandboxed */ }
+    location.reload();
+  });
+  bus.on("store:lobby_updated", () => {
+    if (store.state.lobby.gamePhase !== "lobby") return;
+    const inGame = ["vydrz-panel", "vm-panel"].some(id => document.getElementById(id)?.hidden === false);
+    if (!inGame) return;
+    for (const v of views) v.reset();
+    _showPanel(elements, "lobby");
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -376,7 +411,7 @@ function _leave(socket) {
 /** Ask first when a game is running. */
 export async function leaveGame(socket) {
   const ok = await confirmDialog({
-    title: "Opustit hru?", text: "Hra poběží dál bez tebe. Zpátky už se nepřipojíš.", ok: "Opustit", cancel: "Zůstat", danger: true,
+    title: "Opustit hru?", text: "Hra poběží dál bez tebe (za tebe se bude hrát automaticky). Připojit se zpět můžeš pod stejným jménem.", ok: "Opustit", cancel: "Zůstat", danger: true,
   });
   if (ok) _leave(socket);
 }

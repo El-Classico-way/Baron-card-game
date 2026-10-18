@@ -349,8 +349,8 @@ async def websocket_endpoint(
                 websocket=websocket,
                 display_name=display_name[:32],
             )
-            success = await room.join(client)
-            if not success:
+            client = await room.join(client)          # may be an existing seat that was taken back
+            if client is None:
                 await websocket.close()
                 return
 
@@ -367,7 +367,8 @@ async def websocket_endpoint(
         logger.exception("Unhandled error in websocket_endpoint: %s", exc)
     finally:
         if client is not None:
-            await room.handle_disconnect(client.player_id)
+            # Pass the socket: a stale socket closing late must not drop the player's newer one.
+            await room.handle_disconnect(client.player_id, websocket)
 
         # Reap empty room immediately.
         if room.is_empty:

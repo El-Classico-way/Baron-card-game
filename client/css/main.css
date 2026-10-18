@@ -485,7 +485,7 @@ body.is-targeting .opponent[data-player-id]:not(.opponent--dead) {
 /* Card inspector -------------------------------------------- */
 
 .inspector { position: fixed; inset: 0; z-index: 250; display: flex; align-items: center; justify-content: center; padding: calc(var(--safe-t) + 12px) calc(var(--safe-r) + 12px) calc(var(--safe-b) + 12px) calc(var(--safe-l) + 12px); }
-.inspector__backdrop { position: absolute; inset: 0; background: rgba(4, 12, 8, .82); backdrop-filter: blur(3px); }
+.inspector__backdrop { position: fixed; inset: 0; background: rgba(4, 12, 8, .88); }   /* no backdrop-filter: blurring a full-screen layer makes every animation frame cost 4x on desktop */
 .inspector__sheet {
   position: relative; width: 100%; max-width: 420px; max-height: 100%;
   overflow-y: auto; overscroll-behavior: contain;
@@ -516,7 +516,7 @@ body.is-targeting .opponent[data-player-id]:not(.opponent--dead) {
 
 #game-overlay, #reaction-overlay {
   position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center;
-  background: rgba(0,0,0,.7); backdrop-filter: blur(2px); padding: 16px;
+  background: rgba(0,0,0,.78); padding: 16px;
 }
 .game-over, .reaction-window {
   background: var(--paper); color: var(--ink); border-radius: 16px; padding: 28px 24px;

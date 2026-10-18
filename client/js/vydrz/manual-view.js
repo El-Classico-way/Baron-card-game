@@ -20,6 +20,7 @@ import { onLongPress } from "../utils/long-press.js";
 import {
   cardBack, cardFront, cardMeta, characterFront, drinkFront, existenceFront, locationFront, drinkInfo, fmtStat,
 } from "./cards.js";
+import { dropButton } from "./view.js";
 import { getSettings, updateSettings } from "./settings.js";
 import * as sfx from "./sound.js";
 import { showBaronSplash } from "./winner-splash.js";
@@ -101,6 +102,8 @@ export class ManualView {
       ({ add: () => this._addPair(), undo: () => this._undo(), confirm: () => this._confirmPlan(),
          edit: () => { this._editing = true; this.render(); },
          next: () => this._socket.send("vydrz_next_round"),
+         announce: () => this._socket.send("vydrz_announce"),
+         lobby: () => this._socket.send("return_to_lobby"),
          leave: () => this._onLeave() })[btn.dataset.act]?.();
     });
     document.addEventListener("keydown", (e) => this._onKey(e));
@@ -114,10 +117,13 @@ export class ManualView {
   _p(pid) { return this._state.players.find(p => p.player_id === pid); }
   _names() { return Object.fromEntries(this._state.players.map(p => [p.player_id, p.display_name])); }
   _isHost() { return this._getHostId() === this._state?.you; }
+  isHost() { return this._isHost(); }
 
   _onState(state) {
     if (state.mode !== "vydrz_rucne") return;
+    const first = !this._state;                     // first state since the page loaded / the game began
     const prevPhase = this._state?.phase;
+    const wasAnnounced = this._state?.winner_announced ?? false;
     this._state = state;
     ["join-panel", "lobby-panel", "game-panel", "vydrz-panel"].forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; });
     this._el.panel.hidden = false;
@@ -129,17 +135,39 @@ export class ManualView {
     } else if (prevPhase === "planning") {
       this._editing = false;
     }
+    // Returning to a game in progress: no deal replay, no drink turn-over replay.
+    if (first && (state.phase !== "planning" || me.planned || me.plan?.length)) this._dealt = true;
+    if (first && state.calc) this._revealed[state.calc.draw_id] = state.calc.drinks.length;
+    if (first && state.winner_announced) this._splashed = true;
     const deal = state.phase === "planning" && !this._dealt && getSettings().deal;
     if (state.phase === "planning") this._dealt = true;
     if (deal) { this._dealing = true; this._charLanded = false; this._dealtUids.clear(); }
     this.render();
     if (deal) requestAnimationFrame(() => this._runDeal());
     this._maybeRevealDrinks();
-    const final = state.phase === "finished" ? state.last_result?.final : null;
-    if (final && !this._splashed) {
+    const final = state.phase === "finished" && state.winner_announced ? state.last_result?.final : null;
+    if (final && !this._splashed && !wasAnnounced) {
       this._splashed = true;
       showBaronSplash({ name: final.winner_id ? (this._names()[final.winner_id] ?? final.winner_id) : null, isMe: final.winner_id === state.you });
     }
+  }
+
+  /** Back to the pre-game lobby: forget everything about the finished game. */
+  reset() {
+    this._state = null;
+    this._plan = [];
+    this._sel = { lokace: null, existence: null };
+    this._editing = false;
+    this._revealed = {};
+    this._revealing = false;
+    this._dealt = false;
+    this._dealing = false;
+    this._splashed = false;
+    this._value = 0;
+    this._el.sheet.hidden = true;
+    this._el.panel.hidden = true;
+    this._el.stage.innerHTML = "";
+    this._el.bar.innerHTML = "";
   }
 
   /** The 16 cards are shown pair by pair (see deal-intro.js), then land in the hand. */
@@ -198,6 +226,7 @@ export class ManualView {
     this._el.players.innerHTML = s.players.map((p) => {
       let status = "";
       if (p.away) status = "odešel(a)";
+      else if (p.connected === false) status = "odpojen(a)";
       else if (s.phase === "planning") status = p.planned ? "✔ plán hotov" : "plánuje…";
       else if (s.phase === "calculating" && calc?.participants.includes(p.player_id))
         status = calc.entries[p.player_id] ? "✔ zadáno" : "počítá…";
@@ -478,7 +507,7 @@ export class ManualView {
   _stageFinal() {
     const r = this._state.last_result;
     const f = r?.final;
-    if (!f) return "";
+    if (!f) return this._stageReveal();            // the winner has not been announced yet: just the last round
     const names = this._names();
     const label = (pid) => (pid === f.winner_id ? "Vítěz" : pid === f.loser_id ? "Poražený" : "");
     return `
@@ -511,8 +540,14 @@ export class ManualView {
     } else if (s.phase === "reveal") {
       html = this._isHost() ? `<button class="btn btn--block" data-act="next" type="button">Další kolo</button>`
                             : `<p class="vr__waiting">Čeká se, až host spustí další kolo…</p>`;
+    } else if (s.phase === "finished" && !s.winner_announced) {
+      html = this._isHost() ? `<button class="btn btn--block" data-act="announce" type="button">Ohlásit vítěze</button>`
+                            : `<p class="vr__waiting">Prohlédni si výsledky. Čeká se, až host ohlásí vítěze…</p>`;
     } else if (s.phase === "finished") {
-      html = `<button class="btn btn--block" data-act="leave" type="button">Opustit hru</button>`;
+      const host = this._isHost();
+      html = `<button class="btn btn--block" data-act="leave" type="button">Opustit hru</button>
+        <button class="btn btn--block btn--ghost" data-act="lobby" type="button" ${host ? "" : "disabled"}>Zpět do lobby</button>
+        ${host ? "" : `<p class="vr__waiting">Do lobby vrací všechny host.</p>`}`;
     }
     this._el.bar.innerHTML = html;
   }
@@ -545,6 +580,7 @@ export class ManualView {
       <div class="vs__panel">
         <header class="vs__head"><h2>${esc(p.display_name)} <small>${p.score} b.</small></h2>
           <button class="hud__btn" data-close type="button" aria-label="Zavřít">✕</button></header>
+        ${dropButton(this, { ...p })}
         <p class="vs__note">${p.planned ? "Pořadí dvojic je skryté do vyhodnocení jednotlivých kol." : "Ještě plánuje."}</p>
         <h3>Postava</h3><div class="vs__row">${characterFront(p.character, { extra: "vc--mini" })}</div>
         <h3>Lokace (${p.locations.length})</h3><div class="vs__row">${p.locations.map(c => locationFront(c, { extra: "vc--mini" })).join("") || "<p class='vy-empty'>—</p>"}</div>
@@ -552,6 +588,10 @@ export class ManualView {
         ${p.won.length ? `<h3>Získané lokace</h3><div class="vs__row">${p.won.map(c => locationFront(c, { extra: "vc--mini" })).join("")}</div>` : ""}
       </div>`;
     sheet.hidden = false;
-    sheet.onclick = (e) => { if (e.target.closest("[data-close]")) sheet.hidden = true; };
+    sheet.onclick = (e) => {
+      if (e.target.closest("[data-close]")) { sheet.hidden = true; return; }
+      const drop = e.target.closest("[data-drop]");
+      if (drop) { this._socket.send("drop_player", { player_id: drop.dataset.drop }); sheet.hidden = true; }
+    };
   }
 }

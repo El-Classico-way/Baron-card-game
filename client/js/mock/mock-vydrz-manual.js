@@ -17,9 +17,12 @@ const leaders = (vals, highest = true) => {
   return Object.keys(vals).filter(k => vals[k] === best);
 };
 
+import { visibleResult } from "./mock-vydrz.js";
+
 export class MockManual {
   constructor(players, onChange) {
     this._onChange = onChange;
+    this.announced = false;
     this.phase = "planning"; this.round = 0; this.last = null; this.calc = null;
     this._steps = []; this._ctx = null; this._final = null; this._drawId = 0; this._timers = [];
 
@@ -170,6 +173,13 @@ export class MockManual {
     this.phase = "finished";
   }
 
+  announce() {
+    if (this.phase !== "finished") return "Hra ještě neskončila.";
+    this.announced = true;
+    this._onChange();
+    return null;
+  }
+
   snapshot(viewer) {
     const c = this.calc;
     let calc = null;
@@ -188,7 +198,7 @@ export class MockManual {
       })),
       decks: { chlast: this.deck.length, chlast_discard: this.discard.length, lokace: 64 - 8 * this.players.length,
         existence: 64 - 8 * this.players.length, postava: DATA.characters.length - this.players.length },
-      calc, last_result: this.last,
+      calc, last_result: visibleResult(this.last, this.announced), winner_announced: !!this.announced,
     };
   }
 }

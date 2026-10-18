@@ -18,6 +18,16 @@ jméno. Hostem hry je ten, kdo založí místnost. Konec přes Ctrl+C.
 - `PORT=9000 ./start.sh` jiný port.
 - Odkaz je veřejný, kdo ho má, může hrát. Po skončení se zruší spolu se serverem.
 
+Za běhu hry:
+
+- Když se hráči na mobilu ztratí spojení (přepnutí aplikace, zhasnutá obrazovka), hra se
+  připojí znovu sama. Do rozehrané hry se jde vrátit i novým oknem pod **stejným jménem**.
+  Hra na odpojeného hráče čeká; host ho může v jeho kartě (klepnutí na jméno) odebrat
+  tlačítkem „Hrát bez něj/ní“ a hraje se za něj automaticky.
+- Na konci hry si hráči nejdřív prohlédnou poslední kolo. Host pak klepne na
+  „Ohlásit vítěze“ (animace „je Baron!“ proběhne jednou) a nakonec může všechny vrátit
+  do lobby tlačítkem „Zpět do lobby“ (jde změnit mód a hrát znovu bez nového kódu).
+
 ## Setup (vývoj)
 
     python -m venv .venv && . .venv/bin/activate

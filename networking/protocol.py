@@ -152,6 +152,28 @@ class VydrzSubmitPayload(BaseModel):
     model_config = {"extra": "ignore"}
 
 
+class PingPayload(BaseModel):
+    """Heartbeat from the client; the server answers with a pong."""
+    model_config = {"extra": "ignore"}
+
+
+class DropPlayerPayload(BaseModel):
+    """Host removes a player who is not connected, so the others stop waiting."""
+    player_id: str = Field(..., min_length=1, max_length=64)
+
+    model_config = {"extra": "ignore"}
+
+
+class VydrzAnnouncePayload(BaseModel):
+    """Host announces the winner at the end of a game."""
+    model_config = {"extra": "ignore"}
+
+
+class ReturnToLobbyPayload(BaseModel):
+    """Host sends everybody back to the lobby after a game."""
+    model_config = {"extra": "ignore"}
+
+
 class VydrzNextRoundPayload(BaseModel):
     """Host moves on after the round result has been shown."""
     model_config = {"extra": "ignore"}
@@ -203,6 +225,10 @@ INBOUND_PAYLOAD_MODELS: dict[str, type[BaseModel]] = {
     "vydrz_choose":     VydrzChoosePayload,
     "vydrz_next_round": VydrzNextRoundPayload,
     "vydrz_plan":       VydrzPlanPayload,
+    "vydrz_announce":   VydrzAnnouncePayload,
+    "ping":             PingPayload,
+    "drop_player":      DropPlayerPayload,
+    "return_to_lobby":  ReturnToLobbyPayload,
     "vydrz_submit":     VydrzSubmitPayload,
     "request_snapshot": RequestSnapshotPayload,
     "chat":             ChatPayload,
@@ -334,6 +360,10 @@ def mk_room_state(
             "modes": modes or [],
         },
     }
+
+
+def mk_pong() -> dict:
+    return {"type": "pong", "payload": {}}
 
 
 def mk_vydrz_state(snapshot: dict) -> dict:

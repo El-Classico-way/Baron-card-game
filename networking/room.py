@@ -96,6 +96,11 @@ from networking.protocol import (
     VydrzNextRoundPayload,
     VydrzPlanPayload,
     VydrzSubmitPayload,
+    VydrzAnnouncePayload,
+    DropPlayerPayload,
+    ReturnToLobbyPayload,
+    PingPayload,
+    mk_pong,
     mk_vydrz_state,
     RequestSnapshotPayload,
     ChatPayload,
@@ -232,18 +237,44 @@ class Room:
     # Join / leave / reconnect
     # ------------------------------------------------------------------
 
-    async def join(self, client: ConnectedClient) -> bool:
+    def _seat_for_name(self, name: str) -> tuple[str | None, bool]:
         """
-        Add a new player to the lobby.
+        A seat in the running game that a player with this name may take back.
+        Returns (player_id, taken): taken is True if someone is connected on it.
+        """
+        if self._vydrz is None:
+            return None, False
+        wanted = name.strip().casefold()
+        for p in self._vydrz.players:
+            if p.display_name.strip().casefold() == wanted:
+                existing = self._clients.get(p.player_id)
+                return p.player_id, bool(existing is not None and existing.is_connected)
+        return None, False
 
-        Returns True on success, False if the room is full or already started.
-        Starts the client's drain task and broadcasts updated lobby state.
+    async def join(self, client: ConnectedClient) -> ConnectedClient | None:
         """
+        Add a player. In the lobby that is a new seat. In a running game a player
+        can come back to their own seat (same name) if nobody is connected on it.
+
+        Returns the client that now represents the player (for a returning
+        player that is their original one), or None if they could not join.
+        """
+        if self.phase == RoomPhase.PLAYING:
+            seat, taken = self._seat_for_name(client.display_name)
+            if seat is not None and not taken:
+                return await self._rejoin(client, seat)
+            if seat is not None and taken:
+                await client.send_now(mk_error(
+                    "Hráč s tímto jménem už je ve hře připojený.", "name_taken"))
+                return None
+            await client.send_now(mk_error(
+                "Hra už běží. Vrátit se můžeš jen pod jménem, se kterým jsi začal(a).", "room_not_joinable"))
+            return None
         if not self.is_joinable:
-            await client.send(mk_error(
-                "Místnost je plná nebo hra už začala.", "room_not_joinable"
+            await client.send_now(mk_error(
+                "Místnost je plná nebo hra už skončila.", "room_not_joinable"
             ))
-            return False
+            return None
 
         self._clients[client.player_id] = client
         self._token_index[client.reconnect_token] = client.player_id
@@ -272,7 +303,40 @@ class Room:
             client.player_id, client.display_name
         ), exclude=client.player_id)
 
-        return True
+        return client
+
+    async def _rejoin(self, newcomer: ConnectedClient, player_id: str) -> ConnectedClient:
+        """Give a returning player their seat back (and the game state)."""
+        existing = self._clients.get(player_id)
+        self._cancel_eviction_timer(player_id)
+        if existing is not None:                       # still in the room, just disconnected
+            await existing.reconnect(newcomer.websocket)
+            client = existing
+        else:                                          # had been removed: new connection, old seat
+            newcomer.player_id = player_id
+            self._clients[player_id] = newcomer
+            self._token_index[newcomer.reconnect_token] = player_id
+            await newcomer.start()
+            client = newcomer
+        if self._host_player_id is None:
+            self._host_player_id = player_id
+        if self._vydrz is not None:
+            self._vydrz.mark_back(player_id)
+        await self._send_welcome(client)
+        await self._broadcast(mk_player_connected(player_id, client.display_name), exclude=player_id)
+        await self._broadcast_room_state()
+        await self._send_vydrz_state_all()
+        return client
+
+    async def _send_welcome(self, client: ConnectedClient) -> None:
+        """Tell a (re)connected client who they are, so a reloaded page can restore itself."""
+        from networking.protocol import mk_joined
+        await client.send(mk_joined(
+            room_id=self.room_id,
+            player_id=client.player_id,
+            reconnect_token=client.reconnect_token,
+            display_name=client.display_name,
+        ))
 
     async def reconnect(self, token: str, websocket: WebSocket) -> bool:
         """
@@ -294,19 +358,23 @@ class Room:
         self._cancel_eviction_timer(player_id)
 
         await client.reconnect(websocket)
+        await self._send_welcome(client)
         await self._broadcast(mk_player_connected(
             client.player_id, client.display_name
         ))
+        await self._broadcast_room_state()
 
         # Send a full state snapshot so the client catches up.
         await self._send_snapshot_to(client)
+        if self._vydrz is not None:
+            await self._send_vydrz_state_all()      # the others see them as connected again
         logger.info(
             "Player %s (%s) reconnected to room %s.",
             player_id[:8], client.display_name, self.room_id,
         )
         return True
 
-    async def handle_disconnect(self, player_id: str) -> None:
+    async def handle_disconnect(self, player_id: str, websocket: Any = None) -> None:
         """
         Called by the server when a WebSocket closes unexpectedly.
 
@@ -316,11 +384,15 @@ class Room:
         client = self._clients.get(player_id)
         if client is None:
             return
+        if websocket is not None and client.websocket is not websocket:
+            return          # an old socket closed after the player had already reconnected on a new one
 
         await client.mark_disconnected()
         await self._broadcast(mk_player_disconnected(
             client.player_id, client.display_name
         ))
+        if self._vydrz is not None:
+            await self._send_vydrz_state_all()      # the others see who dropped out (host can remove them)
 
         # Start eviction timer.
         task = asyncio.create_task(
@@ -561,9 +633,18 @@ class Room:
             return
         for pid, client in self._clients.items():
             if client.is_connected:
-                await client.send(mk_vydrz_state(self._vydrz.snapshot(pid)))
+                await client.send(mk_vydrz_state(self._vydrz_snapshot(pid)))
         if self._vydrz.phase.value == "finished":
             self.phase = RoomPhase.FINISHED
+
+    def _vydrz_snapshot(self, viewer_id: str) -> dict:
+        """Engine snapshot plus who is currently connected (the engine knows nothing about sockets)."""
+        snap = self._vydrz.snapshot(viewer_id)
+        for p in snap["players"]:
+            c = self._clients.get(p["player_id"])
+            p["connected"] = bool(c is not None and c.is_connected)
+        snap["host_id"] = self._host_player_id
+        return snap
 
     async def _handle_vydrz_choose(self, client: ConnectedClient, payload: VydrzChoosePayload) -> None:
         if self._vydrz is None:
@@ -601,6 +682,52 @@ class Room:
             return
         await client.send(mk_action_ack("vydrz_submit"))
         await self._send_vydrz_state_all()
+
+    async def _handle_vydrz_announce(self, client: ConnectedClient, payload: VydrzAnnouncePayload) -> None:
+        if self._vydrz is None:
+            await client.send(mk_error("Hra ještě nezačala.", "game_not_started"))
+            return
+        if client.player_id != self._host_player_id:
+            await client.send(mk_error("Vítěze ohlašuje host.", "not_host"))
+            return
+        result = self._vydrz.action_announce()
+        if not result.ok:
+            await client.send(mk_error(result.error, "action_failed"))
+            return
+        await client.send(mk_action_ack("vydrz_announce"))
+        await self._send_vydrz_state_all()
+
+    async def _handle_return_to_lobby(self, client: ConnectedClient, payload: ReturnToLobbyPayload) -> None:
+        if client.player_id != self._host_player_id:
+            await client.send(mk_error("Do lobby vrací host.", "not_host"))
+            return
+        if self.phase != RoomPhase.FINISHED:
+            await client.send(mk_error("Hra ještě neskončila.", "action_failed"))
+            return
+        # Forget the finished game. Whoever is still connected stays; the mode can be changed again.
+        self._vydrz = None
+        self._game = None
+        self._state = None
+        for pid in [pid for pid, c in self._clients.items() if not c.is_connected]:
+            await self._remove_client(pid)
+        self.phase = RoomPhase.LOBBY
+        await self._broadcast_room_state()
+
+    async def _handle_drop_player(self, client: ConnectedClient, payload: DropPlayerPayload) -> None:
+        """Host removes someone who is not connected, so the game stops waiting for them."""
+        if client.player_id != self._host_player_id:
+            await client.send(mk_error("Hráče odebírá host.", "not_host"))
+            return
+        target = self._clients.get(payload.player_id)
+        if target is None or payload.player_id == client.player_id:
+            return
+        if target.is_connected:
+            await client.send(mk_error("Hráč je připojený, odebrat jde jen odpojeného.", "action_failed"))
+            return
+        await self._remove_client(payload.player_id)
+
+    async def _handle_ping(self, client: ConnectedClient, payload: Any) -> None:
+        await client.send(mk_pong())
 
     async def _handle_vydrz_next_round(self, client: ConnectedClient, payload: VydrzNextRoundPayload) -> None:
         if self._vydrz is None:
@@ -847,7 +974,7 @@ class Room:
         that merge — nowhere else may read another player's hand.
         """
         if self._vydrz is not None:
-            await client.send(mk_vydrz_state(self._vydrz.snapshot(client.player_id)))
+            await client.send(mk_vydrz_state(self._vydrz_snapshot(client.player_id)))
             return
         if self._state is None:
             # Game not started yet — send lobby state instead.
@@ -889,6 +1016,10 @@ class Room:
                 "vydrz_choose":     self._handle_vydrz_choose,
                 "vydrz_next_round": self._handle_vydrz_next_round,
                 "vydrz_plan":       self._handle_vydrz_plan,
+                "vydrz_announce":   self._handle_vydrz_announce,
+                "return_to_lobby":  self._handle_return_to_lobby,
+                "drop_player":      self._handle_drop_player,
+                "ping":             self._handle_ping,
                 "vydrz_submit":     self._handle_vydrz_submit,
                 "request_snapshot": self._handle_request_snapshot,
                 "chat":             self._handle_chat,

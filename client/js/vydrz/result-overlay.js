@@ -15,9 +15,12 @@
  */
 
 import { drinkFront, cardBack, drinkInfo, fmtStat } from "./cards.js";
-import * as sfx from "./sound.js";
+import * as realSfx from "./sound.js";
 import { showBaronSplash } from "./winner-splash.js";
 import { getSettings, SPEED_FACTOR } from "./settings.js";
+
+// Reopening an already seen result must be silent.
+const QUIET = new Proxy({}, { get: () => () => {} });
 
 const SOURCES = ["postava", "lokace", "existence"];
 const SOURCE_LABEL = { postava: "Post.", lokace: "Lok.", existence: "Exist." };
@@ -30,10 +33,15 @@ export class ResultOverlay {
    * @param {HTMLElement} root
    * @param {{ onNext: () => void, onLeave: () => void }} handlers
    */
-  constructor(root, { onNext, onLeave }) {
+  constructor(root, { onNext, onLeave, onAnnounce, onLobby }) {
     this._root = root;
     this._onNext = onNext;
     this._onLeave = onLeave;
+    this._onAnnounce = onAnnounce;
+    this._onLobby = onLobby;
+    this._sfx = realSfx;
+    this._animating = false;
+    this._pending = null;     // winner announcement that arrived while the counting still ran
     this._token = 0;          // cancels a running animation when a new one starts
     this._skip = false;
     this.isOpen = false;
@@ -41,6 +49,8 @@ export class ResultOverlay {
 
   close() {
     this._token++;
+    this._animating = false;
+    this._pending = null;
     this.isOpen = false;
     this._root.hidden = true;
     this._root.innerHTML = "";
@@ -54,8 +64,13 @@ export class ResultOverlay {
   async open(result, ctx, { animate = true } = {}) {
     const token = ++this._token;
     this.isOpen = true;
+    this._animating = animate;
+    this._pending = null;
+    this._sfx = animate ? realSfx : QUIET;
+    const sfx = this._sfx;
     this._skip = !animate || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     this._build(result, ctx);
+    this._root.classList.toggle("is-static", !animate);
     this._root.hidden = false;
 
     // Counting speed (settings): every pause is stretched, and so are the pops.
@@ -124,18 +139,46 @@ export class ResultOverlay {
     await this._countScores(result, wait, alive);
     if (!alive()) return;
     if (result.final) {
-      // Everybody sees who is the Baron before the final table.
-      const f = result.final;
-      await showBaronSplash({ name: f.winner_id ? (ctx.names[f.winner_id] ?? f.winner_id) : null, isMe: f.winner_id === ctx.myId });
+      if (animate) await this._splash(result.final, ctx);          // (normally the host's announcement triggers this)
       if (!alive()) return;
-      this._showFinal(f, ctx);
+      this._showFinal(result.final, ctx);
     }
     this._showFooter(result, ctx);
+    this._animating = false;
+    if (this._pending) {
+      const { final, ctx: c } = this._pending;
+      this._pending = null;
+      await this.announce(final, c, { animate: true });
+    }
+  }
+
+  /**
+   * The host announced the winner: splash (once) and then the final table.
+   * Called with animate:false when the announcement was already seen.
+   */
+  async announce(final, ctx, { animate = true } = {}) {
+    if (this._animating) { this._pending = { final, ctx }; return; }
+    if (!this.isOpen) return;
+    const token = this._token;
+    if (animate) {
+      this._sfx = realSfx;
+      this._root.classList.remove("is-static");
+      await this._splash(final, ctx);
+      if (token !== this._token) return;
+    }
+    this._lastResult = { ...(this._lastResult ?? {}), final };
+    this._showFinal(final, ctx, animate);
+    this._showFooter(this._lastResult, ctx);
+  }
+
+  async _splash(f, ctx) {
+    await showBaronSplash({ name: f.winner_id ? (ctx.names[f.winner_id] ?? f.winner_id) : null, isMe: f.winner_id === ctx.myId });
   }
 
   // ---------------------------------------------------------------- building
 
   _build(result, ctx) {
+    this._lastResult = result;
     const rows = Object.keys(result.totals).map((pid) => {
       const pick = result.picks[pid];
       return `<div class="vr__row" data-pid="${esc(pid)}">
@@ -183,7 +226,7 @@ export class ResultOverlay {
     slot.innerHTML = drinkFront(drink);
     slot.classList.remove("is-flipped"); void slot.offsetWidth; slot.classList.add("is-flipped");
     this._root.querySelectorAll(".vr__slot").forEach(s => s.classList.toggle("is-current", s === slot));
-    sfx.flip();
+    this._sfx.flip();
   }
 
   _clearCells() {
@@ -229,10 +272,10 @@ export class ResultOverlay {
         `<span class="vr__tieval vr__tieval--${cls(v)}${step.remaining.includes(pid) ? " is-in" : " is-out"}" data-pid="${esc(pid)}">
            ${esc(ctx.names[pid] ?? pid)} <b>${fmtStat(v)}</b></span>`).join("")}</div>`;
     box.appendChild(el);
-    sfx.flip();
+    this._sfx.flip();
     await wait(450); if (!alive()) return;
     el.classList.add("is-resolved");
-    sfx.tick(Math.max(...Object.values(step.values)), 0);
+    this._sfx.tick(Math.max(...Object.values(step.values)), 0);
     await wait(750);
   }
 
@@ -247,7 +290,7 @@ export class ResultOverlay {
     if (w) {
       const loc = result.picks[w].lokace;
       out.innerHTML = `<b>${esc(ctx.names[w] ?? w)}</b> bere lokaci <b>${esc(loc.name)}</b> a získává <b class="vr__plus">+${result.awarded}</b> b.`;
-      sfx.fanfare();
+      this._sfx.fanfare();
     } else {
       out.textContent = "Remíza se nepodařilo rozhodnout. Lokaci nikdo nezíská.";
     }
@@ -273,7 +316,7 @@ export class ResultOverlay {
     return this._row(pid)?.querySelector(".vr__who b")?.textContent ?? pid;
   }
 
-  _showFinal(final, ctx) {
+  _showFinal(final, ctx, loud = true) {
     const box = this._q(".vr__final");
     box.hidden = false;
     const label = (pid) => (pid === final.winner_id ? "Vítěz" : pid === final.loser_id ? "Poražený" : "");
@@ -286,7 +329,7 @@ export class ResultOverlay {
           <span class="vr__place">${r.place}.</span><span class="vr__rname">${esc(ctx.names[r.player_id] ?? r.player_id)}</span>
           <b>${r.score} b.</b><em>${label(r.player_id)}</em></li>`).join("")}</ol>
       ${steps(final.tiebreak_first, "Rozstřel o 1. místo")}${steps(final.tiebreak_last, "Rozstřel o poslední místo")}`;
-    sfx.fanfare();
+    if (loud && !this._root.classList.contains("is-static")) this._sfx.fanfare();
   }
 
   _showFooter(result, ctx) {
@@ -294,11 +337,21 @@ export class ResultOverlay {
     foot.hidden = false;
     this._q(".vr__skip").hidden = true;
     if (result.final) {
-      foot.innerHTML = `<button class="btn btn--block vr__leave" type="button">Opustit hru</button>`;
+      foot.innerHTML = `<button class="btn btn--block vr__leave" type="button">Opustit hru</button>
+        <button class="btn btn--block btn--ghost vr__lobby" type="button" ${ctx.isHost ? "" : "disabled"}>Zpět do lobby</button>
+        ${ctx.isHost ? "" : `<p class="vr__waiting">Do lobby vrací všechny host.</p>`}`;
       foot.querySelector(".vr__leave").addEventListener("click", () => this._onLeave());
+      foot.querySelector(".vr__lobby").addEventListener("click", () => this._onLobby?.());
+    } else if (result.final_pending) {
+      if (ctx.isHost) {
+        foot.innerHTML = `<button class="btn btn--block vr__announce" type="button">Ohlásit vítěze</button>`;
+        foot.querySelector(".vr__announce").addEventListener("click", () => { realSfx.unlockAudio(); this._onAnnounce?.(); });
+      } else {
+        foot.innerHTML = `<p class="vr__waiting">Prohlédni si výsledky. Čeká se, až host ohlásí vítěze…</p>`;
+      }
     } else if (ctx.isHost) {
       foot.innerHTML = `<button class="btn btn--block vr__next" type="button">Další kolo</button>`;
-      foot.querySelector(".vr__next").addEventListener("click", () => { sfx.unlockAudio(); this._onNext(); });
+      foot.querySelector(".vr__next").addEventListener("click", () => { realSfx.unlockAudio(); this._onNext(); });
     } else {
       foot.innerHTML = `<p class="vr__waiting">Čeká se, až host spustí další kolo…</p>`;
     }

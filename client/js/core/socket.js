@@ -38,6 +38,12 @@ const BACKOFF_BASE_MS     = 1_000;
 const BACKOFF_MAX_MS      = 30_000;
 const BACKOFF_FACTOR      = 2;
 
+const PING_INTERVAL_MS    = 10_000;   // heartbeat: detects connections the OS silently killed
+const PONG_TIMEOUT_MS     = 6_000;
+
+// Server error codes after which retrying cannot help.
+const FATAL_CODES = new Set(["invalid_token", "room_not_joinable", "name_taken", "missing_display_name"]);
+
 export class SocketClient {
   /**
    * @param {string} serverUrl  Base WS URL, e.g. "ws://localhost:8000"
@@ -57,6 +63,64 @@ export class SocketClient {
     // Outbound queue: messages buffered while disconnected.
     // Flushed on reconnect so nothing is silently dropped.
     this._sendQueue = [];
+
+    this._pingTimer = null;
+    this._pongTimer = null;
+    this._wireWakeEvents();
+  }
+
+  /**
+   * Phones freeze background tabs and drop their sockets; when the page comes
+   * back (or the network returns) reconnect immediately instead of waiting out
+   * the backoff timer.
+   */
+  _wireWakeEvents() {
+    const wake = () => this.reconnectNow();
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") wake(); });
+    window.addEventListener("online", wake);
+    window.addEventListener("pageshow", wake);
+    window.addEventListener("focus", wake);
+  }
+
+  /** Reconnect right away if the connection is gone or looks dead. */
+  reconnectNow() {
+    if (this._intentionalClose || !this._roomId) return;
+    const ws = this._ws;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      this._ping();                     // verify it is really alive; a dead one is replaced on timeout
+      return;
+    }
+    if (ws && ws.readyState === WebSocket.CONNECTING) return;
+    clearTimeout(this._reconnectTimer);
+    this._reconnectAttempt = 0;
+    this._open(sessionStorage.getItem(STORAGE_KEY_TOKEN) || null);
+  }
+
+  _ping() {
+    if (!this._ws || this._ws.readyState !== WebSocket.OPEN) return;
+    try { this._ws.send(JSON.stringify({ type: "ping", payload: {} })); } catch { /* closing */ }
+    clearTimeout(this._pongTimer);
+    this._pongTimer = setTimeout(() => this._dropDead(), PONG_TIMEOUT_MS);
+  }
+
+  _dropDead() {
+    const ws = this._ws;
+    if (!ws) return;
+    ws.onclose = null;
+    try { ws.close(); } catch { /* already gone */ }
+    this._stopHeartbeat();
+    this._bus.emit("socket:disconnected", { code: 0, reason: "timeout" });
+    this._scheduleReconnect(true);
+  }
+
+  _startHeartbeat() {
+    this._stopHeartbeat();
+    this._pingTimer = setInterval(() => this._ping(), PING_INTERVAL_MS);
+  }
+
+  _stopHeartbeat() {
+    clearInterval(this._pingTimer);
+    clearTimeout(this._pongTimer);
   }
 
   // ------------------------------------------------------------------
@@ -110,6 +174,7 @@ export class SocketClient {
    */
   disconnect() {
     this._intentionalClose = true;
+    this._stopHeartbeat();
     clearTimeout(this._reconnectTimer);
     if (this._ws) {
       this._ws.close(1000, "user_disconnect");
@@ -181,6 +246,7 @@ export class SocketClient {
 
   _onOpen() {
     this._reconnectAttempt = 0;
+    this._startHeartbeat();
     this._bus.emit("socket:connected", {});
 
     // Flush queued outbound messages.
@@ -204,6 +270,14 @@ export class SocketClient {
       return;
     }
 
+    clearTimeout(this._pongTimer);     // any traffic proves the connection is alive
+    if (type === "pong") return;
+
+    if (type === "error" && FATAL_CODES.has(payload?.code)) {
+      this._fatal(payload);
+      return;
+    }
+
     // Store reconnect token the moment we receive it.
     if (type === "joined" && payload?.reconnect_token) {
       sessionStorage.setItem(STORAGE_KEY_TOKEN, payload.reconnect_token);
@@ -220,11 +294,27 @@ export class SocketClient {
     this._bus.emit("socket:error", { event: ev });
   }
 
+  /** The server will never accept this session again: stop retrying, forget it, tell the UI. */
+  _fatal(payload) {
+    this._intentionalClose = true;
+    this._stopHeartbeat();
+    clearTimeout(this._reconnectTimer);
+    const ws = this._ws;
+    if (ws) { ws.onclose = null; try { ws.close(); } catch { /* gone */ } }
+    sessionStorage.removeItem(STORAGE_KEY_TOKEN);
+    this._bus.emit("socket:disconnected", { code: 0, reason: "fatal" });
+    this._bus.emit("socket:fatal", { code: payload.code, message: payload.message });
+  }
+
   _onClose(ev) {
+    this._stopHeartbeat();
     this._bus.emit("socket:disconnected", { code: ev.code, reason: ev.reason });
-
     if (this._intentionalClose) return;
+    this._scheduleReconnect();
+  }
 
+  _scheduleReconnect() {
+    clearTimeout(this._reconnectTimer);
     // Schedule reconnect with exponential backoff.
     const delay = Math.min(
       BACKOFF_BASE_MS * Math.pow(BACKOFF_FACTOR, this._reconnectAttempt),

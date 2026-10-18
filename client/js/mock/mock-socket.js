@@ -108,6 +108,10 @@ export class MockSocket {
       vydrz_submit: () => this._vydrzDo(() => this._vydrz?.submit?.(ME, payload.value), "vydrz_submit"),
       vydrz_choose: () => this._vydrzDo(() => this._vydrz?.choose(ME, payload.location_uid, payload.existence_uid), "vydrz_choose"),
       vydrz_next_round: () => this._vydrzDo(() => this._vydrz?.nextRound(), "vydrz_next_round"),
+      vydrz_announce: () => this._vydrzDo(() => this._vydrz?.announce?.(), "vydrz_announce"),
+      return_to_lobby: () => this._returnToLobby(),
+      ping: () => {},
+      drop_player: () => {},
       draw_cards: () => this._draw(),
       play_card: () => this._play(payload.card_uid, payload.target_id),
       discard_card: () => this._discardFromHand(payload.card_uid),
@@ -164,6 +168,14 @@ export class MockSocket {
     bus.emit("server:action_ack", { action: "start_game" });
     this._emitRoomState();
     this._emitVydrz();
+  }
+
+  _returnToLobby() {
+    if (!this._vydrz || this._vydrz.phase !== "finished") return;
+    this._vydrz.stop?.();
+    this._vydrz = null;
+    this._phase = "lobby";
+    this._emitRoomState();
   }
 
   _vydrzDo(fn, action) {
