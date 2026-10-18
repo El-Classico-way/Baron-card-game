@@ -497,7 +497,7 @@ body.is-targeting .opponent[data-player-id]:not(.opponent--dead) {
 }
 @keyframes inspect-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
 .inspector__close { position: absolute; top: 8px; right: 8px; z-index: 1; min-width: 44px; min-height: 44px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); font-size: 1.1rem; }
-.inspector__card { --card-w: min(56vw, 230px, 34dvh); flex: none; padding-top: 6px; }
+.inspector__card { --card-w: min(56vw, 230px, 34dvh); --card-h: calc(var(--card-w) * 1.4); flex: none; padding-top: 6px; }   /* --card-h must be re-derived here */
 .inspect-card { box-shadow: 0 10px 30px rgba(0,0,0,.55); }
 .inspect-card .card__corner--bottom { display: flex; }
 .inspect-card .card__name { font-size: calc(var(--card-w) * .12); padding: 0 10px; }
@@ -677,7 +677,7 @@ body.is-targeting .opponent[data-player-id]:not(.opponent--dead) {
   .screen-inner { justify-content: flex-start; }
   .sidebar { height: 80dvh; }
   .inspector__sheet { max-width: 720px; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 20px; padding: 16px 56px 12px 16px; }
-  .inspector__card { --card-w: min(30vw, 190px, 52dvh); grid-row: 1 / span 2; padding: 0; }
+  .inspector__card { --card-w: min(30vw, 190px, 52dvh); --card-h: calc(var(--card-w) * 1.4); grid-row: 1 / span 2; padding: 0; }
   .inspector__text { text-align: left; }
   .inspector__nav { grid-column: 2; }
 }

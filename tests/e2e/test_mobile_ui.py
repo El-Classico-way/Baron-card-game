@@ -207,6 +207,7 @@ def test_right_click_inspects(page, base_url):
 def test_inspect_button_for_selected_card_then_navigate_and_close(page, base_url):
     _table(page, base_url)
     page.click('[data-action="draw"]')
+    expect(page.locator("#hand-area .hand-card--playable")).to_have_count(6)   # draw finished
     inspect_btn = page.locator('[data-action="inspect"]')
     expect(inspect_btn).to_be_hidden()
     page.locator("#hand-area .hand-card").nth(1).click()
@@ -248,6 +249,7 @@ def test_inspector_never_sends_actions(page, base_url):
 def test_discard_pile_top_can_be_inspected(page, base_url):
     _table(page, base_url)
     page.click('[data-action="draw"]')
+    expect(page.locator("#hand-area .hand-card--playable")).to_have_count(6)   # draw finished
     page.locator("#hand-area .hand-card").first.click()
     page.locator(".opponent").first.click()
     expect(page.locator("#discard-top .discard-card")).to_be_visible()
