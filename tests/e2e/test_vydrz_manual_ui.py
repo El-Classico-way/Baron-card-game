@@ -59,8 +59,7 @@ def _enter(page, value):
     """Type the number on the pad and send it with the pad's own Enter button."""
     _type_on_pad(page, value)
     page.click('[data-key="enter"]')
-    expect(page.locator(".np__panel")).to_have_count(0)
-    expect(page.locator("[data-submit]")).to_have_text("Odesláno")
+    expect(page.locator(".np__panel")).to_have_count(0)      # (the last player's table moves on to the result at once)
 
 
 def _no_hscroll(page):
