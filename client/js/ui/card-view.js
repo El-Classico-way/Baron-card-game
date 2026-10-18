@@ -45,6 +45,8 @@ const SUIT_COLORS = {
   clubs:    "black",
 };
 
+export const SUIT_LABELS = { spades: "piky", hearts: "srdce", diamonds: "káry", clubs: "kříže" };
+
 export const CardView = {
 
   /**
@@ -74,7 +76,7 @@ export const CardView = {
            tabindex="0"
            aria-label="${_attr(card.name)} — ${_attr(card.suit)} ${_attr(card.rank)}"
            aria-pressed="${isSelected}"
-           style="--card-art: url('/assets/cards/${_attr(card.id)}.webp')">
+           ${_artStyle(card)}>
         <div class="card__corner card__corner--top">
           <span class="card__rank">${_esc(card.rank)}</span>
           <span class="card__suit">${symbol}</span>
@@ -94,6 +96,36 @@ export const CardView = {
   },
 
   /**
+   * Build a large, non-interactive card face for the card inspector.
+   * Same markup and styling as a hand card, just scaled by CSS; the
+   * description is shown by the inspector next to it, not on the card.
+   *
+   * @param {{ id, name, suit, rank, has_art? }} card
+   * @returns {string} HTML
+   */
+  buildInspectCardHTML(card) {
+    const symbol = SUIT_SYMBOLS[card.suit] ?? "?";
+    const color  = SUIT_COLORS[card.suit]  ?? "black";
+    return `
+      <div class="inspect-card inspect-card--suit-${_attr(card.suit)} inspect-card--color-${color}"
+           ${_artStyle(card)}>
+        <div class="card__corner card__corner--top">
+          <span class="card__rank">${_esc(card.rank)}</span>
+          <span class="card__suit">${symbol}</span>
+        </div>
+        <div class="card__face">
+          <div class="card__art" aria-hidden="true"></div>
+          <div class="card__name">${_esc(card.name)}</div>
+        </div>
+        <div class="card__corner card__corner--bottom" aria-hidden="true">
+          <span class="card__rank">${_esc(card.rank)}</span>
+          <span class="card__suit">${symbol}</span>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
    * Build HTML for the top card of the discard pile.
    * Uses public card shape — no description available.
    *
@@ -105,7 +137,7 @@ export const CardView = {
     const color  = SUIT_COLORS[card.suit]  ?? "black";
     return `
       <div class="discard-card discard-card--suit-${card.suit} discard-card--color-${color}"
-           style="--card-art: url('/assets/cards/${_attr(card.id)}.webp')"
+           ${_artStyle(card)}
            aria-label="Discard: ${_attr(card.name)}">
         <div class="card__corner card__corner--top">
           <span class="card__rank">${_esc(card.rank)}</span>
@@ -153,6 +185,13 @@ export const CardView = {
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+// Cards may opt out of art (placeholders, art not drawn yet) with has_art: false,
+// which avoids a 404 per card and lets the CSS suit-pip fallback show.
+function _artStyle(card) {
+  if (card.has_art === false) return "";
+  return `style="--card-art: url('assets/cards/${_attr(card.id)}.webp')"`;
+}
 
 function _esc(str) {
   if (str == null) return "";

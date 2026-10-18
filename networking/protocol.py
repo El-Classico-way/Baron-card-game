@@ -118,6 +118,50 @@ class DiscardCardPayload(BaseModel):
     model_config = {"extra": "ignore"}
 
 
+class SetModePayload(BaseModel):
+    """Host picks the game mode in the lobby (e.g. "vydrz")."""
+    mode: str = Field(..., min_length=1, max_length=32)
+
+    model_config = {"extra": "ignore"}
+
+
+class VydrzChoosePayload(BaseModel):
+    """Výdrž: pick (or change the pick of) one location + one existence."""
+    location_uid: str = Field(..., min_length=1, max_length=64)
+    existence_uid: str = Field(..., min_length=1, max_length=64)
+
+    model_config = {"extra": "ignore"}
+
+
+class VydrzPlanPair(BaseModel):
+    location_uid: str = Field(..., min_length=1, max_length=64)
+    existence_uid: str = Field(..., min_length=1, max_length=64)
+
+
+class VydrzPlanPayload(BaseModel):
+    """Výdrž (ruční): all pairs in round order."""
+    pairs: list[VydrzPlanPair] = Field(..., min_length=1, max_length=8)
+
+    model_config = {"extra": "ignore"}
+
+
+class VydrzSubmitPayload(BaseModel):
+    """Výdrž (ruční): the number the player counted."""
+    value: int = Field(..., ge=-1000, le=1000)
+
+    model_config = {"extra": "ignore"}
+
+
+class VydrzNextRoundPayload(BaseModel):
+    """Host moves on after the round result has been shown."""
+    model_config = {"extra": "ignore"}
+
+
+class StartGamePayload(BaseModel):
+    """Host asks to start the game from the lobby. No fields."""
+    model_config = {"extra": "ignore"}
+
+
 class EndTurnPayload(BaseModel):
     """Player signals they are done with their turn."""
     model_config = {"extra": "ignore"}
@@ -154,6 +198,12 @@ INBOUND_PAYLOAD_MODELS: dict[str, type[BaseModel]] = {
     "play_card":        PlayCardPayload,
     "discard_card":     DiscardCardPayload,
     "end_turn":         EndTurnPayload,
+    "start_game":       StartGamePayload,
+    "set_mode":         SetModePayload,
+    "vydrz_choose":     VydrzChoosePayload,
+    "vydrz_next_round": VydrzNextRoundPayload,
+    "vydrz_plan":       VydrzPlanPayload,
+    "vydrz_submit":     VydrzSubmitPayload,
     "request_snapshot": RequestSnapshotPayload,
     "chat":             ChatPayload,
 }
@@ -255,6 +305,8 @@ def mk_room_state(
     players: list[dict],   # [{player_id, display_name, ready}]
     game_phase: str,
     max_players: int,
+    mode: str | None = None,
+    modes: list[dict] | None = None,
 ) -> dict:
     """
     Lobby-phase room state broadcast when a player joins or leaves.
@@ -278,8 +330,15 @@ def mk_room_state(
             "players": players,
             "game_phase": game_phase,
             "max_players": max_players,
+            "mode": mode,
+            "modes": modes or [],
         },
     }
+
+
+def mk_vydrz_state(snapshot: dict) -> dict:
+    """Výdrž: full authoritative state for one viewer (see VydrzGame.snapshot)."""
+    return {"type": "vydrz_state", "payload": snapshot}
 
 
 def mk_game_event(event_type: str, event_data: dict) -> dict:

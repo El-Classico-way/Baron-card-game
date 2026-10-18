@@ -52,8 +52,15 @@ export class Renderer {
     bus.on("store:lobby_updated",   ()  => this.renderLobby());
     bus.on("store:state_replaced",  ()  => this.renderGame());
     bus.on("store:hand_updated",    ()  => this.renderHand());
-    bus.on("store:turn_changed",    ()  => this.renderTurnIndicator());
-    bus.on("store:phase_changed",   ()  => this.renderActionBar());
+    bus.on("store:turn_changed",    ()  => {
+      this.renderTurnIndicator();
+      this.renderActionBar();   // buttons depend on whose turn it is
+      this.renderHand();        // hand cards are only clickable on my turn
+    });
+    bus.on("store:phase_changed",   ()  => {
+      this.renderActionBar();
+      this.renderTurnIndicator();
+    });
     bus.on("store:selection_changed",() => this.renderHand());
     bus.on("store:damage_dealt",    (d) => this.renderPlayerHp(d.targetId));
     bus.on("store:player_healed",   (d) => this.renderPlayerHp(d.playerId));
@@ -122,11 +129,13 @@ export class Renderer {
     }
     el.textContent = message;
     el.hidden = false;
+    document.body.classList.add("is-targeting");
   }
 
   _hideTargetPrompt() {
     const el = document.getElementById("target-prompt");
     if (el) el.hidden = true;
+    document.body.classList.remove("is-targeting");
   }
 
   // ------------------------------------------------------------------
@@ -141,15 +150,18 @@ export class Renderer {
     if (el.lobbyPlayerList) {
       el.lobbyPlayerList.innerHTML = lobby.players.map(p => `
         <li class="lobby-player ${p.connected === false ? "disconnected" : ""}"
-            data-player-id="${p.player_id}">
+            data-player-id="${p.player_id}"
+            data-initial="${_esc((p.display_name ?? "?").trim().charAt(0).toUpperCase())}">
           <span class="lobby-player__name">${_esc(p.display_name)}</span>
           ${p.player_id === lobby.hostPlayerId
             ? '<span class="lobby-player__badge">host</span>' : ""}
           ${p.player_id === myPlayerId
-            ? '<span class="lobby-player__badge lobby-player__badge--you">you</span>' : ""}
+            ? '<span class="lobby-player__badge lobby-player__badge--you">ty</span>' : ""}
         </li>
       `).join("");
     }
+
+    this._renderModeSwitch();
 
     // Show/hide start button for host.
     if (el.startGameBtn) {
@@ -157,6 +169,13 @@ export class Renderer {
       const enoughPlayers = lobby.players.length >= 2;
       el.startGameBtn.hidden   = !isHost;
       el.startGameBtn.disabled = !enoughPlayers;
+      const hint = document.getElementById("lobby-hint");
+      if (hint) {
+        hint.textContent = !isHost
+          ? "Čeká se, až host spustí hru…"
+          : enoughPlayers ? "Jsou všichni? Začni, kdykoli budete připraveni."
+                          : "Čeká se aspoň na jednoho dalšího hráče…";
+      }
     }
   }
 
@@ -168,6 +187,7 @@ export class Renderer {
     const { game } = this._store.state;
     if (!game) return;
 
+    this._hideTargetPrompt();   // a resync clears any half-finished selection
     this.renderAllPlayers();
     this.renderHand();
     this.renderDeck();
@@ -201,6 +221,9 @@ export class Renderer {
       });
     });
 
+    // Own HP lives outside the opponents ring; draw it on every full render.
+    this.renderPlayerHp(myPlayerId);
+
     bus.emit("render:players_rendered", {});
   }
 
@@ -218,10 +241,9 @@ export class Renderer {
         <div class="opponent__hp-bar" aria-label="${player.hp}/${player.max_hp} HP">
           <div class="opponent__hp-fill" style="width:${hpPct}%"></div>
         </div>
-        <div class="opponent__hp-label">${player.hp}/${player.max_hp}</div>
-        <div class="opponent__hand-count" aria-label="${player.hand_count} cards in hand">
-          ${"🃏".repeat(Math.min(player.hand_count ?? 0, 8))}
-          ${(player.hand_count ?? 0) > 8 ? `+${player.hand_count - 8}` : ""}
+        <div class="opponent__meta">
+          <span class="opponent__hp-label">${player.hp}/${player.max_hp}</span>
+          <span class="opponent__hand-count" aria-label="${player.hand_count ?? 0} karet v ruce">${player.hand_count ?? 0}</span>
         </div>
         ${equipment.length > 0 ? `
           <div class="opponent__equipment">
@@ -290,6 +312,44 @@ export class Renderer {
     }
   }
 
+  /**
+   * Game mode (family) and, for games with variants, how scoring is counted.
+   * Only the host can change them.
+   */
+  _renderModeSwitch() {
+    const box = document.getElementById("mode-switch");
+    if (!box) return;
+    const { lobby, myPlayerId } = this._store.state;
+    const isHost = myPlayerId === lobby.hostPlayerId;
+    const modes = lobby.modes ?? [];
+    const current = modes.find(m => m.id === lobby.mode);
+    const families = [...new Set(modes.map(m => m.family ?? m.id))];
+
+    box.innerHTML = families.map((fam) => {
+      const members = modes.filter(m => (m.family ?? m.id) === fam);
+      const playable = members.some(m => m.playable);
+      const on = (current?.family ?? current?.id) === fam;
+      const target = members.find(m => m.id === lobby.mode) ?? members[0];
+      return `<button class="seg__btn${on ? " is-on" : ""}" type="button" role="radio" aria-checked="${on}"
+                data-mode="${_esc(target.id)}" ${!playable || !isHost ? "disabled" : ""}>${_esc(members[0].name)}${playable ? "" : " <small>(brzy)</small>"}</button>`;
+    }).join("");
+
+    const variants = modes.filter(m => (m.family ?? m.id) === (current?.family ?? current?.id) && m.variant);
+    const vbox = document.getElementById("variant-box");
+    if (vbox) vbox.hidden = variants.length < 2;
+    const vs = document.getElementById("variant-switch");
+    if (vs) {
+      vs.innerHTML = variants.map(m => `<button class="seg__btn${m.id === lobby.mode ? " is-on" : ""}" type="button" role="radio"
+          aria-checked="${m.id === lobby.mode}" data-mode="${_esc(m.id)}" ${!isHost ? "disabled" : ""}>${_esc(m.variant)}</button>`).join("");
+    }
+    const note = document.getElementById("mode-note");
+    if (note) note.hidden = isHost;                  // only the room's creator changes these
+    const hint = document.getElementById("variant-hint");
+    if (hint) hint.textContent = lobby.mode === "vydrz_rucne"
+      ? "Všech 8 dvojic si naplánuješ předem a každé kolo si čísla spočítáš sám(a)."
+      : "Hra čísla spočítá sama, s animací.";
+  }
+
   renderOpponentHandCount(playerId) {
     if (playerId === this._store.state.myPlayerId) return;
     const { game } = this._store.state;
@@ -306,7 +366,7 @@ export class Renderer {
     const countEl = node.querySelector(".opponent__hand-count");
     if (countEl) {
       const n = player.hand_count ?? 0;
-      countEl.textContent = "🃏".repeat(Math.min(n, 8)) + (n > 8 ? `+${n - 8}` : "");
+      countEl.textContent = String(n);
     }
   }
 
@@ -383,9 +443,12 @@ export class Renderer {
     const isMyTurn      = game.turn.playerId === myPlayerId;
 
     if (this._el.turnIndicator) {
+      const phase = game.turn.phase;
+      const suffix = isMyTurn && phase === "discard" ? " – odhoď karty na počet životů" : "";
       this._el.turnIndicator.textContent = isMyTurn
-        ? "Your turn"
-        : `${currentPlayer?.display_name ?? "?"}'s turn`;
+        ? `Tvůj tah${suffix}`
+        : `Hraje ${currentPlayer?.display_name ?? "?"}`;
+      this._el.turnIndicator.dataset.phase = phase;
       this._el.turnIndicator.classList.toggle("turn-indicator--mine", isMyTurn);
     }
 
@@ -464,10 +527,10 @@ export class Renderer {
 
     el.innerHTML = `
       <div class="game-over ${iWon ? "game-over--win" : "game-over--lose"}">
-        <h2 class="game-over__title">${iWon ? "Victory!" : "Defeat"}</h2>
-        <p class="game-over__winners">${_esc(winnerNames)} win</p>
+        <h2 class="game-over__title">${iWon ? "Vítězství!" : "Porážka"}</h2>
+        <p class="game-over__winners">Vyhrává: ${_esc(winnerNames)}</p>
         <p class="game-over__reason">${_esc(reason ?? "")}</p>
-        <button class="btn" id="btn-play-again">Play Again</button>
+        <button class="btn" id="btn-play-again">Hrát znovu</button>
       </div>
     `;
     el.hidden = false;
@@ -510,9 +573,9 @@ export class Renderer {
 
     el.innerHTML = `
       <div class="reaction-window">
-        <p>Play a <strong>Missed!</strong> to dodge?</p>
+        <p>Zahraj <strong>Missed!</strong> a uhni?</p>
         <div class="reaction-window__timer" id="reaction-timer">${timeoutSeconds}</div>
-        <button class="btn btn--danger" id="btn-skip-reaction">Take the hit</button>
+        <button class="btn btn--danger" id="btn-skip-reaction">Přijmout zásah</button>
       </div>
     `;
     el.hidden = false;
@@ -579,8 +642,8 @@ export class Renderer {
     el.hidden = status === "connected";
     el.className = `connection-banner connection-banner--${status}`;
     el.textContent = {
-      disconnected:  "Connection lost — attempting to reconnect…",
-      reconnecting:  "Reconnecting…",
+      disconnected:  "Spojení přerušeno, zkouším se připojit znovu…",
+      reconnecting:  "Připojuji znovu…",
     }[status] ?? "";
   }
 
@@ -617,9 +680,9 @@ function _esc(str) {
 
 function _roleDescription(role) {
   return {
-    sheriff:  "Eliminate all Outlaws and the Renegade. Your HP is public.",
-    deputy:   "Protect the Sheriff. Win when all enemies are eliminated.",
-    outlaw:   "Eliminate the Sheriff to win. Draw 3 cards if you eliminate someone.",
-    renegade: "Be the last one standing. Eliminate everyone — even outlaws.",
+    sheriff:  "Vyřaď všechny psance a odpadlíka. Tvoje životy jsou veřejné.",
+    deputy:   "Chraň šerifa. Vyhráš, když jsou všichni nepřátelé vyřazeni.",
+    outlaw:   "Vyřaď šerifa. Za každého vyřazeného líznu 3 karty.",
+    renegade: "Přežij jako poslední. Vyřaď všechny, i psance.",
   }[role] ?? "";
 }

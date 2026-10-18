@@ -457,6 +457,10 @@ class Game:
         if not val.ok:
             return val
 
+        # Only now is the play legal, so only now does it use up the allowance.
+        if card.id == "bang":
+            player.has_played_bang = True
+
         # --- remove from hand ---
         player.play_card(card_uid)
 
@@ -531,6 +535,12 @@ class Game:
         hand_limit = player.hp   # standard rule: hand limit = current HP
         if player.hand_count() > hand_limit:
             excess = player.hand_count() - hand_limit
+            if s.turn.phase == TurnPhase.PLAY:
+                # Hand to be trimmed: enter the DISCARD phase so that
+                # action_discard_card becomes legal.  The player then
+                # discards and calls end_turn again.
+                self._advance_phase()
+                return ActionResult.success(EventType.PHASE_CHANGED)
             return ActionResult.fail(
                 f"You must discard {excess} more card(s) before ending your turn."
             )
@@ -589,7 +599,6 @@ class Game:
             has_volcanic = player.has_equipment("volcanic")
             if player.has_played_bang and not has_volcanic:
                 return ActionResult.fail("You can only play one Bang! per turn.")
-            player.has_played_bang = True
 
         # Cards that require a target.
         needs_target = any(
@@ -697,51 +706,33 @@ class Game:
         """
         Sync-safe bridge: runs one async Effect.resolve() to completion.
 
-        STRATEGY — try running inside an existing event loop first:
-          In a fully async server (FastAPI + asyncio), there will already be
-          a running loop.  We schedule the coroutine as a task and block via
-          asyncio.get_event_loop().run_until_complete() — but that raises
-          RuntimeError if called from inside a running loop.
+        The engine is synchronous (see ARCHITECTURE.md), and today no effect
+        actually suspends: the reaction hook returns immediately.  So the
+        coroutine is driven by hand, without any event loop.  This behaves
+        identically whether or not the caller sits inside a running loop
+        (the FastAPI server does).
 
-          So we use the standard pattern:
-            1. If no running loop  → asyncio.run()  (test / CLI context)
-            2. If running loop     → loop.run_until_complete() would deadlock,
-                                     so we use a new thread's event loop via
-                                     asyncio.run_coroutine_threadsafe().
+        The previous implementation scheduled the coroutine on the running
+        loop and then blocked that same loop waiting for it, which timed out
+        after 5s and silently dropped every effect on the real server.
 
-          LONG-TERM: make Game._resolve_effects() and action_play_card() async,
-          remove this bridge entirely, and await the registry directly.
-
-        TODO: Replace with `await registry.resolve(ctx)` once the public
-              action methods are async.
+        If an effect ever really suspends (a real reaction window), this
+        raises instead of misbehaving; that is the point to make the public
+        action methods async and await the registry directly.
         """
         coro = self._registry.resolve(ctx)
-
         try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-
-        if loop is None:
-            # No running loop — safe to use asyncio.run() (tests, CLI).
-            asyncio.run(coro)
-        else:
-            # Running inside an async context (FastAPI, pytest-asyncio).
-            # Schedule as a fire-and-forget task; the effect runs before the
-            # next await point in the caller.
-            # NOTE: This means elimination and win-condition checks that happen
-            # *inside* the effect (e.g. DamageEffect._eliminate_player) are
-            # deferred to the next event loop iteration.  This is acceptable
-            # now but must be resolved when the full async migration is done.
-            import concurrent.futures
-            future = asyncio.run_coroutine_threadsafe(coro, loop)
-            try:
-                future.result(timeout=5.0)   # 5s hard limit; no effect should block
-            except concurrent.futures.TimeoutError:
-                logger.error(
-                    "Effect %s on card %s timed out after 5s.",
-                    ctx.effect.type, ctx.card.id,
-                )
+            coro.send(None)
+        except StopIteration:
+            return
+        except BaseException:
+            coro.close()
+            raise
+        coro.close()
+        raise RuntimeError(
+            f"Effect {ctx.effect.type} on card {ctx.card.id} suspended; "
+            "the synchronous engine cannot wait on reactions yet."
+        )
 
     # ------------------------------------------------------------------
     # Effect handlers

@@ -35,6 +35,13 @@
 
 import { bus }         from "./core/events.js";
 import { SocketClient } from "./core/socket.js";
+import { CardInspector } from "./ui/card-inspector.js";
+import { VydrzView }     from "./vydrz/view.js";
+import { ManualView }    from "./vydrz/manual-view.js";
+import { Numpad }        from "./vydrz/numpad.js";
+import { DealIntro }     from "./vydrz/deal-intro.js";
+import { confirmDialog } from "./ui/confirm.js";
+import { MockSocket }   from "./mock/mock-socket.js";
 import { Store }        from "./core/store.js";
 import { Renderer }     from "./game/renderer.js";
 import { Controller }   from "./game/controller.js";
@@ -66,8 +73,10 @@ function boot() {
   // 3. Store
   const store = new Store();
 
-  // 4. Socket
-  const socket = new SocketClient(SERVER_URL, bus);
+  // 4. Socket — real server, or the in-browser mock when opened with ?mock
+  //    (?mock=1 → demo lobby, ?mock=table → straight to the table, &bots=N).
+  const mock = _mockOptions();
+  const socket = mock ? new MockSocket(mock) : new SocketClient(SERVER_URL, bus);
 
   // 5. Renderer
   const renderer = new Renderer(store, elements);
@@ -78,13 +87,61 @@ function boot() {
   // 7. Animator
   const animator = new Animator(store);
 
+  // Card inspector (enlarged card view); see js/ui/card-inspector.js.
+  const inspector = new CardInspector(store, elements);
+
+  // Výdrž table (rendered only when the server runs that mode).
+  const dealIntro = new DealIntro(document.getElementById("deal-intro"));
+  const vydrz = new VydrzView({
+    socket, inspector, dealIntro,
+    getHostId: () => store.state.lobby.hostPlayerId,
+    onLeave: () => _leave(socket),
+    onConfirmLeave: () => leaveGame(socket),
+  });
+  const openSettings = () => vydrz._openSettings();
+  new ManualView({
+    socket, inspector, openSettings, dealIntro,
+    numpad: new Numpad(document.getElementById("vm-keypad")),
+    getHostId: () => store.state.lobby.hostPlayerId,
+    onLeave: () => _leave(socket),
+    onConfirmLeave: () => leaveGame(socket),
+  });
+  on(document.getElementById("lobby-settings-btn"), "click", openSettings);
+  for (const id of ["mode-switch", "variant-switch"]) {
+    on(document.getElementById(id), "click", (e) => {
+      const btn = e.target.closest("[data-mode]");
+      if (btn && !btn.disabled) socket.send("set_mode", { mode: btn.dataset.mode });
+    });
+  }
+
   // 8. Wire join / lobby forms
   _wireJoinForm(elements, socket);
   _wireLobbyControls(elements, socket, store);
   _wireChatForm(elements);
+  _wireChatSheet();
   _wireActionBar(elements);
+  _wireLeaveButtons(socket);
+  on(document.getElementById("demo-btn"), "click", () => {
+    try { sessionStorage.setItem(DEMO_KEY, "1"); } catch { /* demo via ?mock=1 still works */ }
+    location.reload();
+  });
+  // A build without a server (tools/build_preview.py) can only show the demo.
+  if (window.BARON_MOCK) document.body.classList.add("static-preview");
 
-  // 9. Try to resume session from sessionStorage
+  // Expose to console for debugging in development.
+  if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+    window.__app = { store, socket, renderer, bus };
+  }
+
+  // 9. Mock mode skips the landing page; otherwise try to resume a session.
+  if (mock) {
+    const ribbon = document.getElementById("mock-ribbon");
+    if (ribbon) ribbon.hidden = false;
+    document.body.classList.add("has-ribbon");
+    _showPanel(elements, "lobby");
+    socket.connect("DEMO", "Ty");
+    return;
+  }
   const resumed = socket.tryResume();
 
   // 10. If no session, show join panel
@@ -97,10 +154,6 @@ function boot() {
     _showPanel(elements, "lobby");
   }
 
-  // Expose to console for debugging in development.
-  if (location.hostname === "localhost") {
-    window.__app = { store, socket, renderer, bus };
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -114,19 +167,26 @@ function _wireJoinForm(elements, socket) {
   on(joinForm, "submit", (e) => {
     e.preventDefault();
 
-    const roomId     = roomIdInput?.value.trim();
+    const roomId      = roomIdInput?.value.trim();
     const displayName = displayNameInput?.value.trim();
+    // Two submit buttons: "Create a room" and "Join". Enter in the code
+    // field joins, Enter in the name field creates.
+    const mode = e.submitter?.dataset.mode ?? (roomId ? "join" : "create");
 
     if (!displayName) {
-      _showFormError(joinForm, "Please enter a display name.");
+      _showFormError(joinForm, "Nejdřív zadej jméno.");
+      displayNameInput?.focus();
       return;
     }
 
-    if (roomId) {
-      // Join specific room
+    if (mode === "join") {
+      if (!roomId) {
+        _showFormError(joinForm, "Zadej kód místnosti, který ti kamarád poslal.");
+        roomIdInput?.focus();
+        return;
+      }
       socket.connect(roomId, displayName);
     } else {
-      // Create a new room via HTTP, then connect.
       _createRoomAndConnect(socket, displayName);
     }
   });
@@ -134,19 +194,19 @@ function _wireJoinForm(elements, socket) {
 
 async function _createRoomAndConnect(socket, displayName) {
   try {
-    const res  = await fetch("/lobby/rooms", { method: "POST" });
+    const res  = await fetch("lobby/rooms", { method: "POST" });
     const data = await res.json();
 
     if (!data.room_id) throw new Error("No room_id in response");
 
     // Update URL so the user can share it.
-    history.replaceState({}, "", `/?room=${encodeURIComponent(data.room_id)}`);
+    history.replaceState({}, "", `?room=${encodeURIComponent(data.room_id)}`);
 
     socket.connect(data.room_id, displayName);
   } catch (err) {
     console.error("[App] Failed to create room:", err);
     bus.emit("store:notification", {
-      message: "Could not create room. Is the server running?",
+      message: "Místnost se nepodařilo vytvořit. Běží server?",
       type:    "error",
       id:      Date.now(),
     });
@@ -179,18 +239,15 @@ function _showFormError(form, message) {
 function _wireLobbyControls(elements, socket, store) {
   const { startGameBtn } = elements;
 
-  // Start game: host only, server will reject if not host.
-  // We just send a signal via chat-style message for now; a dedicated
-  // "start_game" packet type should be added to protocol.py.
-  // TODO: add "start_game" message type to server protocol.
-  // For now, the button text reminds the host to use the server console.
+  // Start game: host only; the server rejects anyone else.
   if (startGameBtn) {
     on(startGameBtn, "click", () => {
-      // Placeholder — actual start_game message needs server support.
+      socket.send("start_game");
       bus.emit("ui:start_game_clicked", {});
-      console.info("[App] start_game_clicked — wire to server when ready.");
     });
   }
+
+  on(document.getElementById("copy-link-btn"), "click", () => _shareInvite(store));
 
   // When the server transitions us to playing, show the game panel.
   bus.on("store:game_started", () => _showPanel(elements, "game"));
@@ -256,4 +313,75 @@ if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", boot);
 } else {
   boot();
+}
+
+
+// ---------------------------------------------------------------------------
+// Mock mode, invite link, chat sheet, leave
+// ---------------------------------------------------------------------------
+
+const DEMO_KEY = "baron.demo";
+
+function _mockOptions() {
+  const params = new URLSearchParams(location.search);
+  if (params.has("mock")) {
+    const bots = parseInt(params.get("bots") ?? "3", 10);
+    // ?mode=rezba selects the older action-game prototype in the mock (dev/testing only).
+    return { bots: Number.isFinite(bots) ? bots : 3, autostart: params.get("mock") === "table", mode: params.get("mode") };
+  }
+  // Demo started from the landing page ("Vyzkoušet ukázku"); cleared when leaving.
+  try { if (sessionStorage.getItem(DEMO_KEY)) return { bots: 3, autostart: false, mode: null }; } catch { /* no storage */ }
+  return null;
+}
+
+async function _shareInvite(store) {
+  const roomId = store.state.roomId;
+  if (!roomId) return;
+  const url = `${location.origin}${location.pathname}?room=${encodeURIComponent(roomId)}`;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: "Připoj se do mé hry", url });
+      return;
+    }
+    await navigator.clipboard.writeText(url);
+    bus.emit("store:notification", { message: "Pozvánka zkopírována", type: "success", id: Date.now() });
+  } catch (err) {
+    if (err?.name === "AbortError") return;   // user dismissed the share sheet
+    window.prompt("Zkopíruj tuto pozvánku:", url);
+  }
+}
+
+function _wireChatSheet() {
+  const sheet  = document.getElementById("chat-sheet");
+  const toggle = document.getElementById("chat-toggle");
+  const close  = document.getElementById("chat-close");
+  if (!sheet || !toggle) return;
+  const set = (open) => {
+    sheet.classList.toggle("is-open", open);
+    toggle.setAttribute("aria-expanded", String(open));
+  };
+  on(toggle, "click", () => set(!sheet.classList.contains("is-open")));
+  on(close,  "click", () => set(false));
+}
+
+/** Leave for good: tell the server, forget the session and go back to the landing page. */
+function _leave(socket) {
+  try { socket.sendLeaveRoom?.(); } catch { /* not connected */ }
+  try { socket.disconnect(); } catch { /* already closed */ }       // also clears the stored session
+  try { sessionStorage.removeItem(DEMO_KEY); } catch { /* no storage */ }
+  try { history.replaceState({}, "", location.pathname); } catch { /* sandboxed */ }   // drop ?mock / ?room
+  location.reload();
+}
+
+/** Ask first when a game is running. */
+export async function leaveGame(socket) {
+  const ok = await confirmDialog({
+    title: "Opustit hru?", text: "Hra poběží dál bez tebe. Zpátky už se nepřipojíš.", ok: "Opustit", cancel: "Zůstat", danger: true,
+  });
+  if (ok) _leave(socket);
+}
+
+function _wireLeaveButtons(socket) {
+  on(document.getElementById("leave-btn"), "click", () => _leave(socket));
+  on(document.getElementById("leave-game-btn"), "click", () => leaveGame(socket));
 }

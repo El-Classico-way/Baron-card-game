@@ -1,219 +1,211 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="cs">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#1a4a2e" />
-  <meta name="description" content="Multiplayer card game — play Bang! in your browser" />
+  <!-- viewport-fit=cover lets the layout use the notch area; CSS handles safe-area insets.
+       Pinch-zoom stays enabled for accessibility. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#10261b" />
+  <meta name="description" content="Baron – online karetní hra pro více hráčů" />
 
-  <title>Bang! Online</title>
+  <title>Baron</title>
 
-  <!-- Preconnect to server for faster WS handshake -->
-  <link rel="preconnect" href="/" />
-
-  <link rel="stylesheet" href="/css/main.css" />
+  <!-- Relative URLs so the client works from any path or static host. -->
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/vydrz.css" />
 </head>
 <body>
 
-  <!-- ================================================================
-       CONNECTION BANNER
-       Shown when the WebSocket is disconnected or reconnecting.
-       Hidden when connected.
-       ================================================================ -->
-  <div id="connection-banner" class="connection-banner" hidden>
-    Connection lost — reconnecting…
-  </div>
-
-  <!-- ================================================================
-       NOTIFICATION AREA
-       Transient toasts appended by renderer.renderNotification().
-       Lives outside panels so it's always on top.
-       ================================================================ -->
+  <div id="connection-banner" class="connection-banner" hidden>Spojení přerušeno, připojuji znovu…</div>
   <div id="notification-area" aria-live="polite" aria-atomic="false"></div>
+  <div id="mock-ribbon" class="mock-ribbon" hidden>Ukázka · falešná data</div>
 
   <!-- ================================================================
-       JOIN PANEL
-       Shown on first load when no reconnect_token is in sessionStorage.
+       LANDING / JOIN
        ================================================================ -->
   <div id="join-panel">
-    <div class="join-card">
-      <h1 class="join-card__title">Bang!</h1>
-      <p class="join-card__subtitle">A multiplayer card game</p>
+    <div class="screen-inner">
+      <header class="brand">
+        <div class="brand__mark" aria-hidden="true">♠ ♥ ♦ ♣</div>
+        <h1 class="brand__title">Baron</h1>
+        <p class="brand__subtitle">Karetní hra pro přátele. Na jakémkoli zařízení, bez instalace.</p>
+      </header>
 
-      <form id="join-form" novalidate>
-        <div class="form-group">
-          <label for="display-name-input">Your name</label>
-          <input
-            id="display-name-input"
-            type="text"
-            placeholder="Wild Bill"
-            maxlength="32"
-            autocomplete="nickname"
-            required
-          />
+      <form id="join-form" class="card-panel" novalidate>
+        <div class="field">
+          <label for="display-name-input">Tvoje jméno</label>
+          <input id="display-name-input" type="text" placeholder="Zadej přezdívku"
+                 maxlength="32" autocomplete="nickname" autocapitalize="words" required />
         </div>
 
-        <div class="form-group">
-          <label for="room-id-input">
-            Room code
-            <span style="font-weight:normal; color:#888">(leave blank to create)</span>
-          </label>
-          <input
-            id="room-id-input"
-            type="text"
-            placeholder="abc123"
-            maxlength="16"
-            autocomplete="off"
-            spellcheck="false"
-          />
-        </div>
-
-        <button id="join-btn" class="btn" type="submit" style="width:100%">
-          Enter Saloon
+        <button id="create-btn" class="btn btn--block" type="submit" data-mode="create">
+          Vytvořit místnost
         </button>
+
+        <div class="card-panel__divider">nebo se připoj ke kamarádům</div>
+
+        <div class="join-row">
+          <div class="field">
+            <label for="room-id-input">Kód místnosti</label>
+            <input id="room-id-input" type="text" placeholder="např. 7c0ce961" maxlength="16"
+                   autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+                   inputmode="text" />
+          </div>
+          <button id="join-btn" class="btn" type="submit" data-mode="join">Připojit se</button>
+        </div>
       </form>
+
+      <div class="demo-link">
+        Chceš se jen podívat? Vyzkoušej si hru s falešnými hráči, server není potřeba.
+        <br />
+        <button id="demo-btn" class="btn btn--ghost btn--small" type="button">Vyzkoušet ukázku</button>
+      </div>
     </div>
   </div>
 
   <!-- ================================================================
-       LOBBY PANEL
-       Shown after joining, before the game starts.
+       LOBBY
        ================================================================ -->
   <div id="lobby-panel" hidden>
-    <h2 class="lobby-title">Waiting Room</h2>
+    <div class="screen-inner">
+      <h2 class="lobby-title">Čekárna</h2>
 
-    <div class="lobby-room-id">
-      Room: <span id="room-id-display">—</span>
+      <div class="lobby-code">
+        <span class="lobby-code__label">Kód místnosti</span>
+        <span id="room-id-display" class="lobby-code__value">—</span>
+        <button id="copy-link-btn" class="btn btn--ghost btn--small" type="button">Zkopírovat pozvánku</button>
+      </div>
+
+      <ul id="lobby-player-list" class="lobby-player-list"></ul>
+
+      <div class="mode-pick">
+        <span class="mode-pick__label">Režim hry</span>
+        <div id="mode-switch" class="seg" role="radiogroup" aria-label="Režim hry"></div>
+        <p id="mode-note" class="mode-pick__hint" hidden>Režim a způsob počítání nastavuje host, tedy ten, kdo založil místnost.</p>
+        <div id="variant-box" hidden>
+          <span class="mode-pick__label">Počítání bodů</span>
+          <div id="variant-switch" class="seg" role="radiogroup" aria-label="Způsob počítání"></div>
+          <p id="variant-hint" class="mode-pick__hint"></p>
+        </div>
+      </div>
+
+      <div class="lobby-actions">
+        <button id="start-game-btn" class="btn btn--block" hidden disabled>Začít hru</button>
+        <p class="lobby-hint" id="lobby-hint">Pošli pozvánku kamarádům, ať se připojí.</p>
+        <button id="lobby-settings-btn" class="btn btn--ghost btn--small" type="button">⚙ Nastavení</button>
+        <button id="leave-btn" class="btn btn--ghost btn--small" type="button">Opustit místnost</button>
+      </div>
     </div>
-
-    <ul id="lobby-player-list" class="lobby-player-list"></ul>
-
-    <button id="start-game-btn" class="btn" hidden disabled>
-      Start Game
-    </button>
-
-    <p style="font-size:0.8rem; color:rgba(255,255,255,0.5); text-align:center; margin-top: 8px;">
-      Share the room code with friends to let them join.
-    </p>
   </div>
 
   <!-- ================================================================
-       GAME PANEL
-       The main table.  Hidden until game starts.
+       GAME TABLE
+       Grid areas (see css §5): hud / opponents / table / me / actions,
+       plus a chat sidebar (bottom sheet on phones).
        ================================================================ -->
   <div id="game-panel" hidden>
 
-    <!-- HUD bar across the top -->
-    <div class="hud" style="grid-area:hud">
-      <div id="turn-indicator" class="turn-indicator">Waiting…</div>
-
-      <div class="hud__deck">
-        <span title="Cards in draw pile">🂠 <span id="deck-count">—</span></span>
-        <span title="Cards in discard pile">🗑 <span id="discard-count">—</span></span>
-      </div>
+    <div class="hud">
+      <div id="turn-indicator" class="turn-indicator">Čekání…</div>
+      <button id="chat-toggle" class="hud__btn" type="button" aria-label="Otevřít chat" aria-expanded="false">💬</button>
+      <button id="leave-game-btn" class="hud__btn hud__btn--danger" type="button" aria-label="Opustit hru">✕</button>
     </div>
 
-    <!-- Opponents ring -->
-    <div id="opponents-area" aria-label="Other players"></div>
+    <div id="opponents-area" aria-label="Ostatní hráči"></div>
 
-    <!-- Local player row -->
+    <section class="table" aria-label="Stůl">
+      <div class="pile">
+        <div id="draw-pile" class="pile-slot draw-pile" aria-label="Dobírací balíček"></div>
+        <span class="pile__label">Balíček <b id="deck-count">—</b></span>
+      </div>
+      <div class="pile">
+        <div id="discard-top" class="pile-slot discard-pile--empty" aria-label="Odhazovací balíček"></div>
+        <span class="pile__label">Odhozené <b id="discard-count">—</b></span>
+      </div>
+    </section>
+
     <div id="my-player-area">
-      <!-- Stats sidebar -->
       <div class="my-stats">
-        <div class="my-stats__name">You</div>
+        <span class="my-stats__name">Ty</span>
         <div class="my-hp-bar-wrap">
-          <div id="my-hp-bar" role="progressbar" aria-label="Your HP">
-            <div id="my-hp-bar-fill"></div>
-          </div>
+          <div id="my-hp-bar" role="progressbar" aria-label="Tvoje životy"><div id="my-hp-bar-fill"></div></div>
           <span id="my-hp-display">—</span>
         </div>
-        <!-- Role card, shown once assigned -->
         <div id="role-panel" hidden></div>
       </div>
-
-      <!-- Hand cards -->
-      <div id="hand-area" aria-label="Your hand"></div>
-
-      <!-- Deck + discard stack (visible on desktop, collapsed on mobile) -->
-      <div class="deck-area" aria-label="Deck">
-        <div class="deck-pile card--face-down">
-          <div class="card__back"></div>
-        </div>
-        <div id="discard-top" class="discard-pile--empty" aria-label="Discard pile top"></div>
-      </div>
+      <div id="hand-area" aria-label="Tvoje ruka"></div>
     </div>
 
-    <!-- Action bar -->
     <div id="action-bar" class="action-bar--inactive">
-      <button class="btn" data-action="draw"
-              aria-label="Draw 2 cards" hidden>
-        Draw
-      </button>
-
-      <button class="btn" data-action="end-turn"
-              aria-label="End your turn" hidden>
-        End Turn
-      </button>
-
-      <!--
-        Discard phase: the player clicks cards in hand directly.
-        No dedicated button needed — hand-card clicks emit ui:card_clicked
-        which controller routes to discard when phase === "discard".
-      -->
-
-      <button class="btn" data-action="request-sync"
-              title="Re-sync game state from server"
-              style="background:transparent; border:1px solid rgba(255,255,255,0.2); font-size:0.7rem; padding:4px 8px">
-        ↻ Sync
-      </button>
+      <button class="btn" data-action="draw" aria-label="Líznout karty" hidden>Líznout</button>
+      <button class="btn" data-action="end-turn" aria-label="Ukončit tah" hidden>Ukončit tah</button>
+      <button class="btn btn--ghost btn--small" data-action="inspect" aria-label="Prohlédnout vybranou kartu" hidden>🔍 Prohlédnout</button>
+      <button class="btn btn--ghost btn--small" data-action="request-sync" aria-label="Obnovit stav ze serveru">↻</button>
     </div>
 
-    <!-- Sidebar: chat + (on desktop) deck area -->
-    <aside class="sidebar">
-      <!-- Deck and discard at top of sidebar on desktop -->
-      <div class="deck-area" style="flex-direction:row; justify-content:center; gap:8px; padding:8px">
-        <div class="deck-pile" style="min-width:var(--card-w); height:var(--card-h)">
-          <div class="card__back" style="border-radius: var(--card-radius);"></div>
-        </div>
-        <div id="discard-top-sidebar" aria-label="Top of discard pile"></div>
+    <aside class="sidebar" id="chat-sheet" aria-label="Chat">
+      <div class="sidebar__head">
+        <span>Chat</span>
+        <button class="hud__btn sidebar__close" id="chat-close" type="button" aria-label="Zavřít chat">✕</button>
       </div>
-
-      <!-- Chat -->
       <div class="chat-panel">
-        <div id="chat-messages" aria-live="polite" aria-label="Chat messages"></div>
-
-        <form id="chat-form" aria-label="Send chat message">
-          <input
-            id="chat-input"
-            type="text"
-            placeholder="Say something…"
-            maxlength="256"
-            autocomplete="off"
-          />
+        <div id="chat-messages" aria-live="polite"></div>
+        <form id="chat-form" aria-label="Odeslat zprávu">
+          <input id="chat-input" type="text" placeholder="Napiš něco…" maxlength="256" autocomplete="off" />
         </form>
       </div>
     </aside>
-
-  </div><!-- /#game-panel -->
-
-  <!-- ================================================================
-       OVERLAYS
-       Rendered into by renderer.renderGameOver() and renderReactionWindow().
-       Both hidden by default; renderer sets hidden=false when needed.
-       ================================================================ -->
-
-  <!-- Game over / results -->
-  <div id="game-overlay" hidden aria-modal="true" role="dialog" aria-label="Game over"></div>
-
-  <!-- Missed! reaction window -->
-  <div id="reaction-overlay" hidden aria-modal="true" role="dialog" aria-label="React to incoming attack"></div>
+  </div>
 
   <!-- ================================================================
-       APP ENTRY POINT
-       type="module" enables ES module imports.
-       defer is implied by modules but stated for clarity.
+       VÝDRŽ TABLE (mode "vydrz"). Rendered by js/vydrz/view.js.
        ================================================================ -->
-  <script type="module" src="/js/app.js"></script>
+  <div id="vydrz-panel" hidden>
+    <header class="vy-hud">
+      <div id="vy-round" class="vy-hud__title">Kolo</div>
+      <button id="vy-settings-btn" class="hud__btn" type="button" aria-label="Nastavení">⚙</button>
+      <button id="vy-leave-btn" class="hud__btn hud__btn--danger" type="button" aria-label="Opustit hru">✕</button>
+    </header>
+    <div class="vy-scroll">
+      <section id="vy-players" class="vy-players" aria-label="Hráči"></section>
+      <section class="vy-table" aria-label="Stůl">
+        <div id="vy-piles" class="vy-piles"></div>
+        <div id="vy-drawn" class="vy-drawn"></div>
+      </section>
+      <section id="vy-me" class="vy-me" aria-label="Tvoje postava"></section>
+      <section class="vy-hand-sec"><h3>Lokace</h3><div id="vy-locations" class="vy-hand"></div></section>
+      <section class="vy-hand-sec"><h3>Existence</h3><div id="vy-existences" class="vy-hand"></div></section>
+    </div>
+    <div id="vy-bar" class="vy-bar"></div>
+  </div>
+  <!-- ================================================================
+       VÝDRŽ (RUČNĚ) TABLE. Rendered by js/vydrz/manual-view.js.
+       ================================================================ -->
+  <div id="vm-panel" hidden>
+    <header class="vy-hud">
+      <div id="vm-title" class="vy-hud__title">Výdrž</div>
+      <button id="vm-settings-btn" class="hud__btn" type="button" aria-label="Nastavení">⚙</button>
+      <button id="vm-leave-btn" class="hud__btn hud__btn--danger" type="button" aria-label="Opustit hru">✕</button>
+    </header>
+    <div class="vy-scroll">
+      <section id="vm-players" class="vy-players" aria-label="Hráči"></section>
+      <div id="vm-stage" class="vm-stage"></div>
+    </div>
+    <div id="vm-bar" class="vy-bar"></div>
+  </div>
+  <div id="confirm-dialog" class="cd" hidden role="alertdialog" aria-modal="true"></div>
+  <div id="baron-splash" class="bs" hidden role="dialog" aria-modal="true" aria-label="Vítěz"></div>
+  <div id="deal-intro" class="di" hidden role="dialog" aria-modal="true" aria-label="Rozdávání karet"></div>
+  <div id="vm-keypad" class="np" hidden role="dialog" aria-modal="true"></div>
+  <div id="vy-sheet" class="vs" hidden role="dialog" aria-modal="true" aria-label="Karty hráče"></div>
+  <div id="vy-settings" class="vs" hidden role="dialog" aria-modal="true" aria-label="Nastavení"></div>
+  <div id="vy-result" class="vr" hidden role="dialog" aria-modal="true"></div>
 
+  <div id="card-inspector" class="inspector" role="dialog" aria-modal="true" aria-label="Detail karty" hidden></div>
+
+  <div id="game-overlay" hidden aria-modal="true" role="dialog" aria-label="Konec hry"></div>
+  <div id="reaction-overlay" hidden aria-modal="true" role="dialog" aria-label="Reakce na útok"></div>
+
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

@@ -56,23 +56,47 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
 from networking.client import ConnectedClient
 from networking.protocol import mk_error, parse_inbound
 from networking.room import Room, RoomPhase
 
+from cards import load_default_registry
+from game.card import Card
+from modes.vydrz import VydrzContent, load_default_content
+
 logger = logging.getLogger(__name__)
+
+CLIENT_DIR = Path(__file__).resolve().parent.parent / "client"
 
 
 # ---------------------------------------------------------------------------
 # Room registry
 # ---------------------------------------------------------------------------
+
+_vydrz_content = None
+
+
+def _vydrz() -> "VydrzContent":
+    """Výdrž card data, loaded once."""
+    global _vydrz_content
+    if _vydrz_content is None:
+        _vydrz_content = load_default_content()
+    return _vydrz_content
+
+
+def _default_deck() -> list[Card]:
+    """Fresh deck from the base card pack (new Card instances every game)."""
+    return load_default_registry().build_deck()
+
 
 class RoomRegistry:
     """
@@ -109,14 +133,14 @@ class RoomRegistry:
         async with self._get_lock():
             room = self._rooms.get(room_id)
             if room is None:
-                room = Room.create(room_id=room_id)
+                room = Room.create(room_id=room_id, deck_factory=_default_deck, vydrz_content=_vydrz())
                 self._rooms[room_id] = room
                 logger.info("Created room %s.", room_id)
             return room
 
     async def create_new(self) -> Room:
         """Create a room with a server-generated id and register it."""
-        room = Room.create()
+        room = Room.create(deck_factory=_default_deck, vydrz_content=_vydrz())
         async with self._get_lock():
             self._rooms[room.room_id] = room
         logger.info("Created room %s (server-generated id).", room.room_id)
@@ -196,6 +220,10 @@ def create_app() -> FastAPI:
     # Attach routes.
     app.include_router(lobby_router)
     app.include_router(ws_router)
+
+    # Serve the browser client last so API/WebSocket routes take precedence.
+    if CLIENT_DIR.is_dir():
+        app.mount("/", StaticFiles(directory=CLIENT_DIR, html=True), name="client")
 
     return app
 
@@ -299,7 +327,7 @@ async def websocket_endpoint(
             success = await room.reconnect(token, websocket)
             if not success:
                 await websocket.send_text(json.dumps(
-                    mk_error("Invalid or expired reconnect token.", "invalid_token")
+                    mk_error("Neplatný nebo vypršený token pro obnovení spojení.", "invalid_token")
                 ))
                 await websocket.close()
                 return
@@ -312,7 +340,7 @@ async def websocket_endpoint(
         else:
             if not display_name:
                 await websocket.send_text(json.dumps(
-                    mk_error("display_name is required.", "missing_display_name")
+                    mk_error("Je potřeba zadat jméno.", "missing_display_name")
                 ))
                 await websocket.close()
                 return
@@ -371,7 +399,7 @@ async def _receive_loop(
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
-            await client.send(mk_error("Invalid JSON.", "parse_error"))
+            await client.send(mk_error("Neplatný JSON.", "parse_error"))
             continue
 
         # --- validate and route ---
@@ -390,7 +418,7 @@ async def _receive_loop(
         # join_room is handled at connection time; reject if seen mid-session.
         if msg_type == "join_room":
             await client.send(mk_error(
-                "Already in a room. Use reconnect token to resume.",
+                "Už jsi v místnosti.",
                 "already_joined",
             ))
             continue
