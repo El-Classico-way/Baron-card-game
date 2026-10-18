@@ -33,7 +33,7 @@ export function showBaronSplash({ name, isMe = false }) {
         <button class="btn bs__btn" type="button">Pokračovat</button>
       </div>`;
     root.hidden = false;
-    if (name) { sfx.fanfare(); setTimeout(sfx.fanfare, 900); }
+    if (name) sfx.partyPopper();
 
     let done = false;
     const close = () => {

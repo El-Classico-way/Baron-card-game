@@ -130,11 +130,13 @@ export class ResultOverlay {
     if (result.tiebreak.length) {
       this._note("Remíza! Rozstřel: počítají se jen postavy.");
       sfx.tieSting();
-      await wait(700); if (!alive()) return;
-      for (const step of result.tiebreak) {
-        await this._playTieStep(step, ctx, wait, alive);
+      await wait(1300); if (!alive()) return;
+      for (let i = 0; i < result.tiebreak.length; i++) {
+        if (i > 0) { this._note("Pořád remíza! Táhne se další chlast…"); await wait(1500); if (!alive()) return; }
+        await this._playTieStep(result.tiebreak[i], ctx, wait, alive);
         if (!alive()) return;
       }
+      await wait(600); if (!alive()) return;
     }
 
     // ---- outcome -----------------------------------------------------------
@@ -170,7 +172,7 @@ export class ResultOverlay {
       if (token !== this._token) return;
     }
     this._lastResult = { ...(this._lastResult ?? {}), final };
-    this._showFinal(final, ctx, animate);
+    this._showFinal(final, ctx, false);              // the splash has its own sound
     this._showFooter(this._lastResult, ctx);
   }
 
@@ -306,10 +308,10 @@ export class ResultOverlay {
            ${esc(ctx.names[pid] ?? pid)} <b>${fmtStat(v)}</b></span>`).join("")}</div>`;
     box.appendChild(el);
     this._sfx.flip();
-    await wait(450); if (!alive()) return;
+    await wait(800); if (!alive()) return;
     el.classList.add("is-resolved");
     this._sfx.tick(Math.max(...Object.values(step.values)), 0);
-    await wait(750);
+    await wait(1500);
   }
 
   _showOutcome(result, ctx) {

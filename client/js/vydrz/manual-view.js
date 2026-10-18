@@ -415,7 +415,7 @@ export class ManualView {
     const rows = Array.from({ length: this._state.rounds_total }, (_, i) => {
       const pair = this._plan[i];
       const unlocked = !this._planLocked();
-      const cell = (cls, kind, card) => `<span class="${cls} vm-pcard${unlocked ? " is-movable" : ""}" data-kind="${kind}" data-i="${i}" data-uid="${esc(card.uid)}" title="Klepni pro zvětšení${unlocked ? ", přetáhni pro prohození" : ""}">${esc(card.name)}</span>`;
+      const cell = (cls, kind, card) => `<span class="${cls} vm-pcard${unlocked ? " is-movable" : ""}" data-kind="${kind}" data-i="${i}" data-uid="${esc(card.uid)}" title="Klepni pro zvětšení${unlocked ? ", přetáhni pro prohození" : ""}">${esc(card.name)}${card.number ? ` <b>(${card.number})</b>` : ""}</span>`;
       return pair
         ? `<li class="is-set${unlocked ? " is-draggable" : ""}" data-i="${i}">${unlocked ? `<span class="vm-grab" aria-label="Přetáhni celou dvojici" title="Přetáhni celou dvojici">⠿</span>` : ""}<span class="vm-n">${i + 1}</span>${cell("vm-plan__loc", "lokace", byUid[pair.location_uid])}${cell("vm-plan__ex", "existence", byUid[pair.existence_uid])}</li>`
         : `<li><span class="vm-n">${i + 1}</span><span class="vm-plan__empty">—</span></li>`;
@@ -550,7 +550,7 @@ export class ManualView {
     this._revealing = true;
     this.render();
     for (let i = 1; i <= c.drinks.length; i++) {
-      await new Promise(r => setTimeout(r, i === 1 ? 500 : 750));
+      await new Promise(r => setTimeout(r, i === 1 ? (c.tiebreak ? 1400 : 500) : 750));
       if (this._state?.calc?.draw_id !== drawId) { this._revealing = false; return; }
       this._revealed[drawId] = i;
       sfx.flip();

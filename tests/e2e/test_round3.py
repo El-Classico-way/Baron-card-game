@@ -217,7 +217,7 @@ def test_manual_plan_names_inspect_swap_and_random(page, base_url):
         page.locator('.vy-slot[data-kind="existence"]').first.click()
         page.click('[data-act="add"]')
     row_text = page.locator(".vm-plan__list li.is-set").first.inner_text()
-    assert "(" not in row_text and ")" not in row_text                       # no leftover "(1)" after the name
+    assert "(" in row_text and ")" in row_text                               # the location number stays after the name
     page.locator(".vm-plan__list").scroll_into_view_if_needed()
     page.locator(".vm-plan__loc").first.click()                              # a tap on the name inspects the card
     expect(page.locator("#card-inspector")).to_be_visible()
@@ -279,3 +279,25 @@ def test_manual_base_view_has_the_decks_and_drink_counts(page, base_url):
     assert total == 97                                                       # three drinks were drawn in round 1
     page.click('#vm-stage [data-pile="lokace"]')
     expect(page.locator("#card-inspector")).to_be_visible()
+
+
+def test_winner_splash_plays_one_party_popper_not_two_fanfares(browser, base_url):
+    ctx = browser.new_context(viewport={"width": 1000, "height": 700})
+    ctx.add_init_script("""
+      window.__osc = 0; window.__noise = 0;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      const co = AC.prototype.createOscillator, cb = AC.prototype.createBufferSource;
+      AC.prototype.createOscillator = function () { window.__osc++; return co.call(this); };
+      AC.prototype.createBufferSource = function () { window.__noise++; return cb.call(this); };
+      localStorage.setItem('baron.settings', JSON.stringify({deal: false, sound: true}));
+    """)
+    pg = ctx.new_page()
+    pg.goto(f"{base_url}?mock=table&bots=2")
+    expect(pg.locator("#vydrz-panel")).to_be_visible(timeout=8000)
+    pg.evaluate("window.__osc = 0; window.__noise = 0")
+    pg.evaluate("void import('/js/vydrz/winner-splash.js').then(m => { m.showBaronSplash({ name: 'Alice', isMe: true }); })")
+    expect(pg.locator("#baron-splash .bs__card")).to_be_visible()
+    pg.wait_for_timeout(1500)
+    assert pg.evaluate("window.__noise") == 1                                # the confetti rustle, once
+    assert pg.evaluate("window.__osc") <= 2                                  # bang + whistle; the old arpeggio was 8 notes
+    ctx.close()
