@@ -306,7 +306,8 @@ function _mockOptions() {
   const params = new URLSearchParams(location.search);
   if (!params.has("mock")) return null;
   const bots = parseInt(params.get("bots") ?? "3", 10);
-  return { bots: Number.isFinite(bots) ? bots : 3, autostart: params.get("mock") === "table" };
+  // ?mode=rezba selects the older action-game prototype in the mock (dev/testing only).
+  return { bots: Number.isFinite(bots) ? bots : 3, autostart: params.get("mock") === "table", mode: params.get("mode") };
 }
 
 async function _shareInvite(store) {

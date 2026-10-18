@@ -61,7 +61,7 @@ def test_join_requires_name_and_code(page, base_url):
 
 
 def test_lobby_in_mock_mode(page, base_url):
-    page.goto(f"{base_url}?mock=1&bots=3")
+    page.goto(f"{base_url}?mock=1&mode=rezba&bots=3")
     expect(page.locator("#lobby-panel")).to_be_visible()
     expect(page.locator("#mock-ribbon")).to_be_visible()
     expect(page.locator("#lobby-player-list li")).to_have_count(4, timeout=5000)
@@ -70,7 +70,7 @@ def test_lobby_in_mock_mode(page, base_url):
 
 
 def test_table_interaction(page, base_url):
-    page.goto(f"{base_url}?mock=table&bots=5")
+    page.goto(f"{base_url}?mock=table&mode=rezba&bots=5")
     expect(page.locator("#game-panel")).to_be_visible(timeout=8000)
     _no_horizontal_scroll(page)
 
@@ -104,7 +104,7 @@ def test_table_interaction(page, base_url):
 
 
 def test_hand_scrolls_inside_itself_not_the_page(page, base_url):
-    page.goto(f"{base_url}?mock=table&bots=2")
+    page.goto(f"{base_url}?mock=table&mode=rezba&bots=2")
     expect(page.locator("#game-panel")).to_be_visible(timeout=8000)
     for _ in range(3):
         page.click('[data-action="draw"]')
@@ -119,7 +119,7 @@ def test_hand_scrolls_inside_itself_not_the_page(page, base_url):
 
 
 def test_chat_sheet_on_small_screens(page, base_url):
-    page.goto(f"{base_url}?mock=table&bots=2")
+    page.goto(f"{base_url}?mock=table&mode=rezba&bots=2")
     expect(page.locator("#game-panel")).to_be_visible(timeout=8000)
     if page.viewport_size["width"] >= 900:
         expect(page.locator("#chat-input")).to_be_visible()      # permanent sidebar
@@ -134,7 +134,7 @@ def test_chat_sheet_on_small_screens(page, base_url):
 
 
 def test_bots_take_their_turn_and_it_returns_to_me(page, base_url):
-    page.goto(f"{base_url}?mock=table&bots=2")
+    page.goto(f"{base_url}?mock=table&mode=rezba&bots=2")
     expect(page.locator("#game-panel")).to_be_visible(timeout=8000)
     page.click('[data-action="draw"]')
     page.click('[data-action="end-turn"]')
@@ -147,7 +147,7 @@ def test_bots_take_their_turn_and_it_returns_to_me(page, base_url):
 # ---------------------------------------------------------------------------
 
 def _table(page, base_url, bots=2):
-    page.goto(f"{base_url}?mock=table&bots={bots}")
+    page.goto(f"{base_url}?mock=table&mode=rezba&bots={bots}")
     expect(page.locator("#game-panel")).to_be_visible(timeout=8000)
 
 

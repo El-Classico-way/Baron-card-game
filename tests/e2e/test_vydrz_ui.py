@@ -160,7 +160,7 @@ def test_settings_sheet_toggles_sound(page, base_url):
     page.click('[data-set-sound="off"]')
     expect(page.locator('[data-set-sound="off"]')).to_have_class("seg__btn is-on")
     assert page.evaluate("JSON.parse(localStorage.getItem('baron.settings')).sound") is False
-    page.click("#vy-settings [data-close]")
+    page.click("#vy-settings button[data-close]")
     expect(page.locator("#vy-settings")).to_be_hidden()
 
 

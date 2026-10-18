@@ -55,7 +55,7 @@ export class MockSocket {
    *   bots       number of fake opponents (1-6)
    *   autostart  skip the lobby and go straight to the table
    */
-  constructor({ bots = 3, autostart = false } = {}) {
+  constructor({ bots = 3, autostart = false, mode = null } = {}) {
     this._botCount = Math.min(6, Math.max(1, bots));
     this._autostart = autostart;
     this._timers = [];
@@ -67,7 +67,7 @@ export class MockSocket {
     this._turnPhase = "draw";
     this._turnNo = 0;
     this._name = "You";
-    this._mode = "vydrz";    // lobby selection, like the real server
+    this._mode = mode === "rezba" ? "rezba" : "vydrz";    // lobby selection, like the real server
     this._vydrz = null;
   }
 
