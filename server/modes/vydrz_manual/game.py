@@ -128,6 +128,7 @@ class ManualVydrzGame:
         self.round = 0
         self.players: list[_Player] = []
         self._drink_deck: list[DrinkCard] = []
+        self._left: dict[str, list] = {"postava": [], "lokace": [], "existence": []}
         self._drink_discard: list[DrinkCard] = []
         self._pool = {"lokace": 0, "existence": 0}
         self._calc: _Calc | None = None
@@ -161,6 +162,7 @@ class ManualVydrzGame:
         ]
         self._pool = {"lokace": deal.locations_left, "existence": deal.existences_left}
         self._drink_deck = deal.drink_deck
+        self._left = {"postava": deal.characters_left, "lokace": deal.locations_pile, "existence": deal.existences_pile}
         self.phase = Phase.PLANNING
         self.round = 0
         return ActionResult.success()
@@ -448,6 +450,9 @@ class ManualVydrzGame:
                 "existence": self._pool["existence"],
                 "postava": len(self.content.characters) - len(self.players),
             },
+            # Undealt cards (for the deck inspector), in the system order of the card data.
+            "decks_cards": {k: [c.to_dict() for c in v] for k, v in self._left.items()},
+            "drinks_left": {d.id: sum(1 for c in self._drink_deck if c.drink == d.id) for d in self.content.drinks},
             "calc": calc,
             "last_result": self._visible_result(),
             "winner_announced": self.winner_announced,

@@ -45,6 +45,13 @@ export function tick(value, running) {
   else tone({ freq: 190 + value * 12, slideTo: 120, type: "sawtooth", dur: 0.2, gain: 0.12 });
 }
 
+/** Manual counting: − steps mirror + steps (same voice, pitch falls instead of rising). */
+export function stepSound(delta, running) {
+  if (delta > 0) return tick(delta, running);
+  const start = Math.max(150, 330 + Math.max(-6, Math.min(12, running)) * 22 + 40);
+  tone({ freq: start, slideTo: Math.max(70, start - 90), dur: 0.16 });
+}
+
 /** A drink card was turned over. */
 export function flip() { tone({ freq: 520, slideTo: 260, type: "square", dur: 0.09, gain: 0.07 }); }
 

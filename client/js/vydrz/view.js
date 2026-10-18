@@ -13,6 +13,7 @@ import { bus } from "../core/events.js";
 import {
   cardBack, cardFront, cardMeta, characterFront, existenceFront, locationFront, drinkFront, DRINKS,
 } from "./cards.js";
+import { pilesHtml, onPileClick } from "./piles.js";
 import { ResultOverlay } from "./result-overlay.js";
 import { getSettings, updateSettings, SPEED_LABELS } from "./settings.js";
 import * as sfx from "./sound.js";
@@ -53,8 +54,7 @@ export class VydrzView {
       panel: document.getElementById("vydrz-panel"),
       round: document.getElementById("vy-round"),
       players: document.getElementById("vy-players"),
-      piles: document.getElementById("vy-piles"),
-      drawn: document.getElementById("vy-drawn"),
+      table: document.getElementById("vy-table"),
       me: document.getElementById("vy-me"),
       locs: document.getElementById("vy-locations"),
       exs: document.getElementById("vy-existences"),
@@ -66,6 +66,7 @@ export class VydrzView {
     this._overlay = new ResultOverlay(this._el.result, {
       onNext: () => this._socket.send("vydrz_next_round"),
       onLeave: () => this._onLeave(),
+      onInspect: (cards, uid) => this._inspectCards(cards, uid),
       onAnnounce: () => this._socket.send("vydrz_announce"),
       onLobby: () => this._socket.send("return_to_lobby"),
     });
@@ -79,11 +80,7 @@ export class VydrzView {
   _wire() {
     const { locs, exs, players, bar, sheet, settings } = this._el;
 
-    this._el.piles.addEventListener("click", (e) => {
-      const pile = e.target.closest("[data-pile]");
-      const cards = pile && this._state?.decks_cards?.[pile.dataset.pile];
-      if (cards?.length) this._inspectCards(cards, cards[0].uid);
-    });
+    onPileClick(this._el.table, () => this._state, (cards, uid) => this._inspectCards(cards, uid));
 
     for (const [container, kind] of [[locs, "lokace"], [exs, "existence"]]) {
       container.addEventListener("click", (e) => {
@@ -92,6 +89,16 @@ export class VydrzView {
         if (!card) return;
         if (this._suppressClick) { this._suppressClick = false; return; }
         if (inspectBtn) { this._inspectCards(this._me()[kind === "lokace" ? "locations" : "existences"], card.dataset.uid); return; }
+        // Nothing to choose any more (confirmed pick, or the round is over): a tap just looks at the card.
+        if (this._state.phase !== "choosing" || this._locked()) { this._inspectCards(this._me()[kind === "lokace" ? "locations" : "existences"], card.dataset.uid); return; }
+        // A second tap on the same card within a moment looks at it (the cards are re-rendered between taps, so no dblclick event).
+        const now = performance.now();
+        if (this._lastTap?.uid === card.dataset.uid && now - this._lastTap.t < 450) {
+          this._lastTap = null;
+          this._inspectCards(this._me()[kind === "lokace" ? "locations" : "existences"], card.dataset.uid);
+          return;
+        }
+        this._lastTap = { uid: card.dataset.uid, t: now };
         this._select(kind, card.dataset.uid);
       });
       this._longPress(container, ".vc[data-uid]", (uid) =>
@@ -109,7 +116,6 @@ export class VydrzView {
       if (chip) this._openPlayerSheet(chip.dataset.pid);
     });
     this._el.me.addEventListener("click", () => this._inspectCards([this._me().character], this._me().character.uid));
-    this._el.piles.addEventListener("click", () => {});     // piles are decorative
 
     bar.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-act]");
@@ -280,24 +286,7 @@ export class VydrzView {
   }
 
   _renderTable() {
-    const s = this._state, d = s.decks;
-    this._el.piles.innerHTML = [
-      ["postava", "Postavy", d.postava],
-      ["lokace", "Lokace", d.lokace],
-      ["existence", "Existence", d.existence],
-    ].map(([kind, label, n]) => `
-      <button class="vy-pile" type="button" data-pile="${kind}" ${n ? "" : "disabled"} aria-label="Prohlédnout balíček: ${label}">
-        <span class="vy-pile__stack">${cardBack(kind)}</span>
-        <span class="vy-pile__label">${label} <b>${n}</b></span>
-      </button>`).join("");
-
-    // The drink deck is one card with the counts per kind; it cannot be inspected.
-    const left = s.drinks_left ?? {};
-    this._el.drawn.innerHTML = `
-      <div class="vy-drawn__deck"><span class="vy-pile__stack">${cardBack("chlast")}</span>
-        <span class="vy-pile__label">Chlast <b>${d.chlast}</b></span></div>
-      <ul class="vy-drinks-left" aria-label="Zbývající chlast podle druhu">${DRINKS.map(k =>
-        `<li data-drink="${k.id}"><i class="vc-dot" style="background:${k.color}"></i><span>${esc(k.name)}</span><b>${left[k.id] ?? 0}</b></li>`).join("")}</ul>`;
+    this._el.table.innerHTML = pilesHtml(this._state);
   }
 
   _renderMe() {

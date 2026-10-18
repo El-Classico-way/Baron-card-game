@@ -33,12 +33,13 @@ export class ResultOverlay {
    * @param {HTMLElement} root
    * @param {{ onNext: () => void, onLeave: () => void }} handlers
    */
-  constructor(root, { onNext, onLeave, onAnnounce, onLobby }) {
+  constructor(root, { onNext, onLeave, onAnnounce, onLobby, onInspect }) {
     this._root = root;
     this._onNext = onNext;
     this._onLeave = onLeave;
     this._onAnnounce = onAnnounce;
     this._onLobby = onLobby;
+    this._onInspect = onInspect;
     this._sfx = realSfx;
     this._animating = false;
     this._pending = null;     // winner announcement that arrived while the counting still ran
@@ -215,6 +216,7 @@ export class ResultOverlay {
         <footer class="vr__foot" hidden></footer>
       </div>`;
     this._root.setAttribute("aria-labelledby", "vr-title");
+    if (ctx.character && result.picks[ctx.myId]) this._wireMine(result, ctx);
     this._q(".vr__close").addEventListener("click", () => this.close());
     this._q(".vr__backdrop").addEventListener("click", () => this.close());
   }
@@ -229,6 +231,16 @@ export class ResultOverlay {
       ${card("lokace", "Lokace", locationFront(pick.lokace, { extra: "vc--mini" }))}
       ${card("existence", "Existence", existenceFront(pick.existence, { extra: "vc--mini" }))}
     </section>`;
+  }
+
+  _wireMine(result, ctx) {
+    const mine = this._q(".vr__mine");
+    if (!mine) return;
+    const cards = [ctx.character, result.picks[ctx.myId].lokace, result.picks[ctx.myId].existence];
+    mine.addEventListener("click", (e) => {
+      const el = e.target.closest(".vc[data-uid]");
+      if (el) this._onInspect?.(cards, el.dataset.uid);
+    });
   }
 
   _markMine(src, drink) {

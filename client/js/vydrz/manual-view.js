@@ -21,6 +21,7 @@ import {
   cardBack, cardFront, cardMeta, characterFront, drinkFront, existenceFront, locationFront, drinkInfo, fmtStat,
 } from "./cards.js";
 import { dropButton } from "./view.js";
+import { pilesHtml, onPileClick } from "./piles.js";
 import { getSettings, updateSettings } from "./settings.js";
 import * as sfx from "./sound.js";
 import { showBaronSplash } from "./winner-splash.js";
@@ -77,6 +78,9 @@ export class ManualView {
     const wasLongPress = onLongPress(stage, ".vm-card[data-uid]", (el) => this._inspectNode(el));
     stage.addEventListener("click", (e) => {
       if (wasLongPress()) return;
+      if (e.target.closest("[data-shuffle]")) { this._randomPlan(); return; }
+      const pc = e.target.closest(".vm-pcard");
+      if (pc) { if (!this._justDragged) this._inspectPlanned(pc.dataset.uid); return; }
       if (e.target.closest("[data-close-result]")) { this._resultHidden = true; this.render(); return; }
       const step = e.target.closest("[data-step]");
       if (step) { this._step(parseInt(step.dataset.step, 10)); return; }
@@ -94,6 +98,8 @@ export class ManualView {
       if (el) { e.preventDefault(); this._inspectNode(el); }
     });
     this._wireReorder(stage);
+    this._wireCardSwap(stage);
+    onPileClick(stage, () => this._state, (cards, uid) => this._inspectList(cards, uid));
     players.addEventListener("click", (e) => {
       const chip = e.target.closest("[data-pid]");
       if (chip) this._openPlayerSheet(chip.dataset.pid);
@@ -162,6 +168,102 @@ export class ManualView {
       handle.addEventListener("pointerup", end);
       handle.addEventListener("pointercancel", end);
     });
+  }
+
+  /**
+   * Drag one card (location or existence) of the plan onto the same kind of card in another
+   * row to swap them, so a single change does not mean redoing the whole table. A tap
+   * without movement inspects the card. With touch, hold briefly before dragging so the
+   * page can still be scrolled.
+   */
+  _wireCardSwap(stage) {
+    stage.addEventListener("pointerdown", (e) => {
+      const src = e.target.closest(".vm-pcard.is-movable");
+      if (!src || this._planLocked() || e.button > 0) return;
+      const kind = src.dataset.kind, from = +src.dataset.i;
+      const touch = e.pointerType === "touch";
+      const sx = e.clientX, sy = e.clientY;
+      let ghost = null, over = null, armed = !touch, holdTimer = null, done = false;
+      const cellUnder = (x, y) => {
+        const el = document.elementFromPoint(x, y)?.closest(`.vm-pcard[data-kind="${kind}"]`);
+        return el && +el.dataset.i !== from ? el : null;
+      };
+      const start = () => {
+        ghost = document.createElement("div");
+        ghost.className = "vm-ghost";
+        ghost.textContent = src.textContent;
+        document.body.appendChild(ghost);
+        src.classList.add("is-lifted");
+      };
+      const place = (x, y) => { ghost.style.transform = `translate(${x + 10}px, ${y + 10}px)`; };
+      const block = (ev) => { if (ghost) ev.preventDefault(); };      // keep the page still while dragging on touch
+      const finish = (commit) => {
+        if (done) return;
+        done = true;
+        clearTimeout(holdTimer);
+        document.removeEventListener("pointermove", move);
+        document.removeEventListener("pointerup", up);
+        document.removeEventListener("pointercancel", cancel);
+        document.removeEventListener("touchmove", block);
+        over?.classList.remove("is-target");
+        src.classList.remove("is-lifted");
+        ghost?.remove();
+        if (commit && over) {
+          const to = +over.dataset.i;
+          const key = kind === "lokace" ? "location_uid" : "existence_uid";
+          [this._plan[from][key], this._plan[to][key]] = [this._plan[to][key], this._plan[from][key]];
+          sfx.pop();
+        }
+        if (ghost) { this._justDragged = true; setTimeout(() => { this._justDragged = false; }, 0); }
+        this.render();
+      };
+      const move = (ev) => {
+        if (!ghost) {
+          const dist = Math.hypot(ev.clientX - sx, ev.clientY - sy);
+          if (touch && !armed) { if (dist > 8) finish(false); return; }       // moved before the hold: it is a scroll
+          if (dist < 6) return;
+          start();
+        }
+        place(ev.clientX, ev.clientY);
+        const t = cellUnder(ev.clientX, ev.clientY);
+        if (t !== over) { over?.classList.remove("is-target"); over = t; over?.classList.add("is-target"); }
+      };
+      const up = () => finish(true);
+      const cancel = () => finish(false);
+      if (touch) holdTimer = setTimeout(() => { armed = true; start(); place(sx, sy); navigator.vibrate?.(15); }, 280);
+      document.addEventListener("pointermove", move);
+      document.addEventListener("pointerup", up);
+      document.addEventListener("pointercancel", cancel);
+      document.addEventListener("touchmove", block, { passive: false });
+    });
+  }
+
+  /** Random arrangement of all pairs; only a starting point the player can still change by hand. */
+  _randomPlan() {
+    if (this._planLocked()) return;
+    const me = this._me();
+    const shuffled = (list) => {
+      const a = [...list];
+      for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+      return a;
+    };
+    const locs = shuffled(me.locations), exs = shuffled(me.existences);
+    this._plan = locs.map((l, i) => ({ location_uid: l.uid, existence_uid: exs[i].uid }));
+    this._sel = { lokace: null, existence: null };
+    sfx.unlockAudio(); sfx.pop();
+    this.render();
+  }
+
+  _inspectPlanned(uid) {
+    const me = this._me();
+    const card = [...me.locations, ...me.existences].find(c => c.uid === uid);
+    if (!card) return;
+    this._inspectList(card.kind === "lokace" ? me.locations : me.existences, uid);
+  }
+
+  _inspectList(cards, uid) {
+    const items = cards.map(c => ({ uid: c.uid, html: cardFront(c, { extra: "vc--big" }), name: c.name, meta: cardMeta(c), desc: c.description ?? "" }));
+    this._inspector.openCustom(items, Math.max(0, items.findIndex(i => i.uid === uid)));
   }
 
   // ------------------------------------------------------------------- state
@@ -310,8 +412,10 @@ export class ManualView {
     const byUid = Object.fromEntries([...me.locations, ...me.existences].map(c => [c.uid, c]));
     const rows = Array.from({ length: this._state.rounds_total }, (_, i) => {
       const pair = this._plan[i];
+      const unlocked = !this._planLocked();
+      const cell = (cls, kind, card) => `<span class="${cls} vm-pcard${unlocked ? " is-movable" : ""}" data-kind="${kind}" data-i="${i}" data-uid="${esc(card.uid)}" title="Klepni pro zvětšení${unlocked ? ", přetáhni pro prohození" : ""}">${esc(card.name)}</span>`;
       return pair
-        ? `<li class="is-set${this._planLocked() ? "" : " is-draggable"}" data-i="${i}">${this._planLocked() ? "" : `<span class="vm-grab" aria-label="Přetáhni pro změnu pořadí" title="Přetáhni pro změnu pořadí">⠿</span>`}<span class="vm-n">${i + 1}</span><span class="vm-plan__loc">${esc(byUid[pair.location_uid].name)} <b>(${byUid[pair.location_uid].number})</b></span><span class="vm-plan__ex">${esc(byUid[pair.existence_uid].name)}</span></li>`
+        ? `<li class="is-set${unlocked ? " is-draggable" : ""}" data-i="${i}">${unlocked ? `<span class="vm-grab" aria-label="Přetáhni celou dvojici" title="Přetáhni celou dvojici">⠿</span>` : ""}<span class="vm-n">${i + 1}</span>${cell("vm-plan__loc", "lokace", byUid[pair.location_uid])}${cell("vm-plan__ex", "existence", byUid[pair.existence_uid])}</li>`
         : `<li><span class="vm-n">${i + 1}</span><span class="vm-plan__empty">—</span></li>`;
     }).join("");
 
@@ -333,7 +437,7 @@ export class ManualView {
       <section class="vm-me"><div class="vm-char${this._charLanded ? "" : " is-undealt"}">${characterFront(me.character, { extra: "vc--mini vm-card" })}</div>
         <div class="vm-me__text"><h3>${esc(me.display_name)}</h3><p>Tvoje postava. Klepnutím ji zvětšíš.</p></div></section>
       <p class="vm-info">Rozděl si <b>všech ${this._state.rounds_total} dvojic</b> předem. Dvojice č. 1 se použije v 1. kole, č. 2 ve 2. a tak dál. Ostatní uvidí tvé karty, ne pořadí.</p>
-      <section class="vm-plan"><h3>Tvůj plán</h3><ol class="vm-plan__list">${rows}</ol></section>
+      <section class="vm-plan"><div class="vm-plan__head"><h3>Tvůj plán</h3>${this._planLocked() ? "" : `<button class="btn btn--ghost btn--small" type="button" data-shuffle>Rozdělit náhodně</button>`}</div><ol class="vm-plan__list">${rows}</ol></section>
       ${hand("lokace", "Lokace", locationFront)}
       ${hand("existence", "Existence", existenceFront)}`;
   }
@@ -470,7 +574,7 @@ export class ManualView {
     if (!this._canEnter()) return;
     this._value = Math.max(-MAX_VALUE, Math.min(MAX_VALUE, this._value + delta));
     this._fresh = true; this._negPending = false;
-    sfx.unlockAudio(); sfx.tick(delta, this._value);
+    sfx.unlockAudio(); sfx.stepSound(delta, this._value);
     this._paintValue();
   }
 
@@ -556,6 +660,7 @@ export class ManualView {
     const hand = (cards, label, front) => `<section class="vy-hand-sec"><h3>${label} (${cards.length})</h3><div class="vy-hand">${
       cards.map(c => `<div class="vy-slot is-locked">${front(c, { extra: "vc--hand vm-card" })}</div>`).join("") || `<p class="vy-empty">Žádné karty.</p>`}</div></section>`;
     return `
+      <section class="vy-table">${pilesHtml(this._state)}</section>
       <section class="vm-me"><div class="vm-char">${characterFront(me.character, { extra: "vc--mini vm-card" })}</div>
         <div class="vm-me__text"><h3>${esc(me.display_name)}</h3><p>Tvoje postava. Klepnutím ji zvětšíš.</p>
           ${me.won.length ? `<p class="vy-me__won">Získané lokace: ${me.won.map(l => `<b>${l.number}</b>`).join(" ")}</p>` : ""}</div></section>
