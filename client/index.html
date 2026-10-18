@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="cs">
 <head>
   <meta charset="UTF-8" />
   <!-- viewport-fit=cover lets the layout use the notch area; CSS handles safe-area insets.
        Pinch-zoom stays enabled for accessibility. -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#10261b" />
-  <meta name="description" content="Baron — a multiplayer card game for your browser" />
+  <meta name="description" content="Baron – online karetní hra pro více hráčů" />
 
   <title>Baron</title>
 
@@ -16,9 +16,9 @@
 </head>
 <body>
 
-  <div id="connection-banner" class="connection-banner" hidden>Connection lost — reconnecting…</div>
+  <div id="connection-banner" class="connection-banner" hidden>Spojení přerušeno, připojuji znovu…</div>
   <div id="notification-area" aria-live="polite" aria-atomic="false"></div>
-  <div id="mock-ribbon" class="mock-ribbon" hidden>Demo mode · mock data</div>
+  <div id="mock-ribbon" class="mock-ribbon" hidden>Ukázka · falešná data</div>
 
   <!-- ================================================================
        LANDING / JOIN
@@ -28,37 +28,37 @@
       <header class="brand">
         <div class="brand__mark" aria-hidden="true">♠ ♥ ♦ ♣</div>
         <h1 class="brand__title">Baron</h1>
-        <p class="brand__subtitle">Card game for friends. Any device, no install.</p>
+        <p class="brand__subtitle">Karetní hra pro přátele. Na jakémkoli zařízení, bez instalace.</p>
       </header>
 
       <form id="join-form" class="card-panel" novalidate>
         <div class="field">
-          <label for="display-name-input">Your name</label>
-          <input id="display-name-input" type="text" placeholder="Enter a nickname"
+          <label for="display-name-input">Tvoje jméno</label>
+          <input id="display-name-input" type="text" placeholder="Zadej přezdívku"
                  maxlength="32" autocomplete="nickname" autocapitalize="words" required />
         </div>
 
         <button id="create-btn" class="btn btn--block" type="submit" data-mode="create">
-          Create a room
+          Vytvořit místnost
         </button>
 
-        <div class="card-panel__divider">or join friends</div>
+        <div class="card-panel__divider">nebo se připoj ke kamarádům</div>
 
         <div class="join-row">
           <div class="field">
-            <label for="room-id-input">Room code</label>
-            <input id="room-id-input" type="text" placeholder="e.g. 7c0ce961" maxlength="16"
+            <label for="room-id-input">Kód místnosti</label>
+            <input id="room-id-input" type="text" placeholder="např. 7c0ce961" maxlength="16"
                    autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
                    inputmode="text" />
           </div>
-          <button id="join-btn" class="btn" type="submit" data-mode="join">Join</button>
+          <button id="join-btn" class="btn" type="submit" data-mode="join">Připojit se</button>
         </div>
       </form>
 
       <div class="demo-link">
-        Just want to look around? Preview the UI with fake players — no server needed.
+        Chceš se jen podívat? Vyzkoušej si hru s falešnými hráči, server není potřeba.
         <br />
-        <button id="demo-btn" class="btn btn--ghost btn--small" type="button">Try the demo table</button>
+        <button id="demo-btn" class="btn btn--ghost btn--small" type="button">Vyzkoušet ukázku</button>
       </div>
     </div>
   </div>
@@ -68,12 +68,12 @@
        ================================================================ -->
   <div id="lobby-panel" hidden>
     <div class="screen-inner">
-      <h2 class="lobby-title">Waiting room</h2>
+      <h2 class="lobby-title">Čekárna</h2>
 
       <div class="lobby-code">
-        <span class="lobby-code__label">Room code</span>
+        <span class="lobby-code__label">Kód místnosti</span>
         <span id="room-id-display" class="lobby-code__value">—</span>
-        <button id="copy-link-btn" class="btn btn--ghost btn--small" type="button">Copy invite link</button>
+        <button id="copy-link-btn" class="btn btn--ghost btn--small" type="button">Zkopírovat pozvánku</button>
       </div>
 
       <ul id="lobby-player-list" class="lobby-player-list"></ul>
@@ -81,13 +81,18 @@
       <div class="mode-pick">
         <span class="mode-pick__label">Režim hry</span>
         <div id="mode-switch" class="seg" role="radiogroup" aria-label="Režim hry"></div>
+        <div id="variant-box" hidden>
+          <span class="mode-pick__label">Počítání bodů</span>
+          <div id="variant-switch" class="seg" role="radiogroup" aria-label="Způsob počítání"></div>
+          <p id="variant-hint" class="mode-pick__hint"></p>
+        </div>
       </div>
 
       <div class="lobby-actions">
-        <button id="start-game-btn" class="btn btn--block" hidden disabled>Start game</button>
-        <p class="lobby-hint" id="lobby-hint">Share the invite link with friends to let them join.</p>
+        <button id="start-game-btn" class="btn btn--block" hidden disabled>Začít hru</button>
+        <p class="lobby-hint" id="lobby-hint">Pošli pozvánku kamarádům, ať se připojí.</p>
         <button id="lobby-settings-btn" class="btn btn--ghost btn--small" type="button">⚙ Nastavení</button>
-        <button id="leave-btn" class="btn btn--ghost btn--small" type="button">Leave room</button>
+        <button id="leave-btn" class="btn btn--ghost btn--small" type="button">Opustit místnost</button>
       </div>
     </div>
   </div>
@@ -100,52 +105,52 @@
   <div id="game-panel" hidden>
 
     <div class="hud">
-      <div id="turn-indicator" class="turn-indicator">Waiting…</div>
-      <button id="chat-toggle" class="hud__btn" type="button" aria-label="Open chat" aria-expanded="false">💬</button>
-      <button id="leave-game-btn" class="hud__btn hud__btn--danger" type="button" aria-label="Leave game">✕</button>
+      <div id="turn-indicator" class="turn-indicator">Čekání…</div>
+      <button id="chat-toggle" class="hud__btn" type="button" aria-label="Otevřít chat" aria-expanded="false">💬</button>
+      <button id="leave-game-btn" class="hud__btn hud__btn--danger" type="button" aria-label="Opustit hru">✕</button>
     </div>
 
-    <div id="opponents-area" aria-label="Other players"></div>
+    <div id="opponents-area" aria-label="Ostatní hráči"></div>
 
-    <section class="table" aria-label="Table">
+    <section class="table" aria-label="Stůl">
       <div class="pile">
-        <div id="draw-pile" class="pile-slot draw-pile" aria-label="Draw pile"></div>
-        <span class="pile__label">Deck <b id="deck-count">—</b></span>
+        <div id="draw-pile" class="pile-slot draw-pile" aria-label="Dobírací balíček"></div>
+        <span class="pile__label">Balíček <b id="deck-count">—</b></span>
       </div>
       <div class="pile">
-        <div id="discard-top" class="pile-slot discard-pile--empty" aria-label="Discard pile"></div>
-        <span class="pile__label">Discard <b id="discard-count">—</b></span>
+        <div id="discard-top" class="pile-slot discard-pile--empty" aria-label="Odhazovací balíček"></div>
+        <span class="pile__label">Odhozené <b id="discard-count">—</b></span>
       </div>
     </section>
 
     <div id="my-player-area">
       <div class="my-stats">
-        <span class="my-stats__name">You</span>
+        <span class="my-stats__name">Ty</span>
         <div class="my-hp-bar-wrap">
-          <div id="my-hp-bar" role="progressbar" aria-label="Your HP"><div id="my-hp-bar-fill"></div></div>
+          <div id="my-hp-bar" role="progressbar" aria-label="Tvoje životy"><div id="my-hp-bar-fill"></div></div>
           <span id="my-hp-display">—</span>
         </div>
         <div id="role-panel" hidden></div>
       </div>
-      <div id="hand-area" aria-label="Your hand"></div>
+      <div id="hand-area" aria-label="Tvoje ruka"></div>
     </div>
 
     <div id="action-bar" class="action-bar--inactive">
-      <button class="btn" data-action="draw" aria-label="Draw cards" hidden>Draw</button>
-      <button class="btn" data-action="end-turn" aria-label="End your turn" hidden>End turn</button>
-      <button class="btn btn--ghost btn--small" data-action="inspect" aria-label="Inspect selected card" hidden>🔍 Inspect</button>
-      <button class="btn btn--ghost btn--small" data-action="request-sync" aria-label="Re-sync from server">↻</button>
+      <button class="btn" data-action="draw" aria-label="Líznout karty" hidden>Líznout</button>
+      <button class="btn" data-action="end-turn" aria-label="Ukončit tah" hidden>Ukončit tah</button>
+      <button class="btn btn--ghost btn--small" data-action="inspect" aria-label="Prohlédnout vybranou kartu" hidden>🔍 Prohlédnout</button>
+      <button class="btn btn--ghost btn--small" data-action="request-sync" aria-label="Obnovit stav ze serveru">↻</button>
     </div>
 
     <aside class="sidebar" id="chat-sheet" aria-label="Chat">
       <div class="sidebar__head">
         <span>Chat</span>
-        <button class="hud__btn sidebar__close" id="chat-close" type="button" aria-label="Close chat">✕</button>
+        <button class="hud__btn sidebar__close" id="chat-close" type="button" aria-label="Zavřít chat">✕</button>
       </div>
       <div class="chat-panel">
         <div id="chat-messages" aria-live="polite"></div>
-        <form id="chat-form" aria-label="Send chat message">
-          <input id="chat-input" type="text" placeholder="Say something…" maxlength="256" autocomplete="off" />
+        <form id="chat-form" aria-label="Odeslat zprávu">
+          <input id="chat-input" type="text" placeholder="Napiš něco…" maxlength="256" autocomplete="off" />
         </form>
       </div>
     </aside>
@@ -172,14 +177,30 @@
     </div>
     <div id="vy-bar" class="vy-bar"></div>
   </div>
+  <!-- ================================================================
+       VÝDRŽ (RUČNĚ) TABLE. Rendered by js/vydrz/manual-view.js.
+       ================================================================ -->
+  <div id="vm-panel" hidden>
+    <header class="vy-hud">
+      <div id="vm-title" class="vy-hud__title">Výdrž</div>
+      <button id="vm-settings-btn" class="hud__btn" type="button" aria-label="Nastavení">⚙</button>
+      <button id="vm-leave-btn" class="hud__btn hud__btn--danger" type="button" aria-label="Opustit hru">✕</button>
+    </header>
+    <div class="vy-scroll">
+      <section id="vm-players" class="vy-players" aria-label="Hráči"></section>
+      <div id="vm-stage" class="vm-stage"></div>
+    </div>
+    <div id="vm-bar" class="vy-bar"></div>
+  </div>
+  <div id="vm-keypad" class="np" hidden role="dialog" aria-modal="true"></div>
   <div id="vy-sheet" class="vs" hidden role="dialog" aria-modal="true" aria-label="Karty hráče"></div>
   <div id="vy-settings" class="vs" hidden role="dialog" aria-modal="true" aria-label="Nastavení"></div>
   <div id="vy-result" class="vr" hidden role="dialog" aria-modal="true"></div>
 
-  <div id="card-inspector" class="inspector" role="dialog" aria-modal="true" aria-label="Card details" hidden></div>
+  <div id="card-inspector" class="inspector" role="dialog" aria-modal="true" aria-label="Detail karty" hidden></div>
 
-  <div id="game-overlay" hidden aria-modal="true" role="dialog" aria-label="Game over"></div>
-  <div id="reaction-overlay" hidden aria-modal="true" role="dialog" aria-label="React to incoming attack"></div>
+  <div id="game-overlay" hidden aria-modal="true" role="dialog" aria-label="Konec hry"></div>
+  <div id="reaction-overlay" hidden aria-modal="true" role="dialog" aria-label="Reakce na útok"></div>
 
   <script type="module" src="js/app.js"></script>
 </body>

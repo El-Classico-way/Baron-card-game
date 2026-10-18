@@ -327,7 +327,7 @@ async def websocket_endpoint(
             success = await room.reconnect(token, websocket)
             if not success:
                 await websocket.send_text(json.dumps(
-                    mk_error("Invalid or expired reconnect token.", "invalid_token")
+                    mk_error("Neplatný nebo vypršený token pro obnovení spojení.", "invalid_token")
                 ))
                 await websocket.close()
                 return
@@ -340,7 +340,7 @@ async def websocket_endpoint(
         else:
             if not display_name:
                 await websocket.send_text(json.dumps(
-                    mk_error("display_name is required.", "missing_display_name")
+                    mk_error("Je potřeba zadat jméno.", "missing_display_name")
                 ))
                 await websocket.close()
                 return
@@ -399,7 +399,7 @@ async def _receive_loop(
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
-            await client.send(mk_error("Invalid JSON.", "parse_error"))
+            await client.send(mk_error("Neplatný JSON.", "parse_error"))
             continue
 
         # --- validate and route ---
@@ -418,7 +418,7 @@ async def _receive_loop(
         # join_room is handled at connection time; reject if seen mid-session.
         if msg_type == "join_room":
             await client.send(mk_error(
-                "Already in a room. Use reconnect token to resume.",
+                "Už jsi v místnosti.",
                 "already_joined",
             ))
             continue

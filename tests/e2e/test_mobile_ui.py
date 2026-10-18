@@ -54,10 +54,10 @@ def test_landing_page(page, base_url):
 def test_join_requires_name_and_code(page, base_url):
     page.goto(base_url)
     page.click("#create-btn")
-    expect(page.locator(".form-error")).to_contain_text("name")
+    expect(page.locator(".form-error")).to_contain_text("jméno")
     page.fill("#display-name-input", "Tester")
     page.click("#join-btn")
-    expect(page.locator(".form-error")).to_contain_text("room code")
+    expect(page.locator(".form-error")).to_contain_text("kód")
 
 
 def test_lobby_in_mock_mode(page, base_url):
@@ -138,7 +138,7 @@ def test_bots_take_their_turn_and_it_returns_to_me(page, base_url):
     expect(page.locator("#game-panel")).to_be_visible(timeout=8000)
     page.click('[data-action="draw"]')
     page.click('[data-action="end-turn"]')
-    expect(page.locator("#turn-indicator")).not_to_contain_text("Your turn")
+    expect(page.locator("#turn-indicator")).not_to_contain_text("Tvůj tah")
     expect(page.locator('[data-action="draw"]')).to_be_visible(timeout=12000)
 
 
@@ -163,13 +163,13 @@ def test_inspect_when_not_playing_a_tap_opens_it(page, base_url):
     _table(page, base_url)       # draw phase: a tap has no game meaning
     page.locator("#hand-area .hand-card").first.click()
     expect(page.locator("#card-inspector")).to_be_visible()
-    expect(page.locator(".inspector__name")).to_have_text("Card 1")
+    expect(page.locator(".inspector__name")).to_have_text("Karta 1")
     expect(page.locator(".inspector__desc")).not_to_be_empty()
 
 
 def test_inspect_is_readable_and_fits_the_screen(page, base_url):
     _table(page, base_url)
-    page.locator("#hand-area .hand-card").nth(2).click()      # "Card 3": the long text
+    page.locator("#hand-area .hand-card").nth(2).click()      # "Karta 3": the long text
     sheet = page.locator(".inspector__sheet")
     expect(sheet).to_be_visible()
     vp = page.viewport_size
@@ -216,13 +216,13 @@ def test_inspect_button_for_selected_card_then_navigate_and_close(page, base_url
     assert inspect_btn.bounding_box()["height"] >= 40
     inspect_btn.click()
     name = page.locator(".inspector__name")
-    expect(name).to_have_text("Card 2")
+    expect(name).to_have_text("Karta 2")
     page.click('[data-nav="1"]')
-    expect(name).to_have_text("Card 3")
+    expect(name).to_have_text("Karta 3")
     expect(page.locator(".inspector__count")).to_have_text("3 / 6")
     page.click('[data-nav="-1"]')
     page.click('[data-nav="-1"]')
-    expect(name).to_have_text("Card 1")
+    expect(name).to_have_text("Karta 1")
     # Close with the close button; the selection survives.
     page.click(".inspector__close")
     expect(page.locator("#card-inspector")).to_be_hidden()
@@ -255,7 +255,7 @@ def test_discard_pile_top_can_be_inspected(page, base_url):
     expect(page.locator("#discard-top .discard-card")).to_be_visible()
     page.locator("#discard-top").click()
     expect(page.locator("#card-inspector")).to_be_visible()
-    expect(page.locator(".inspector__where")).to_contain_text("discard")
+    expect(page.locator(".inspector__where")).to_contain_text("odhazovac")
     expect(page.locator(".inspector__nav")).to_have_count(0)
     page.keyboard.press("Escape")
     expect(page.locator("#card-inspector")).to_be_hidden()

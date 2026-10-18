@@ -45,7 +45,7 @@ const SUIT_COLORS = {
   clubs:    "black",
 };
 
-export const SUIT_LABELS = { spades: "Spades", hearts: "Hearts", diamonds: "Diamonds", clubs: "Clubs" };
+export const SUIT_LABELS = { spades: "piky", hearts: "srdce", diamonds: "káry", clubs: "kříže" };
 
 export const CardView = {
 

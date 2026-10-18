@@ -241,7 +241,7 @@ class Room:
         """
         if not self.is_joinable:
             await client.send(mk_error(
-                "Room is full or game has already started.", "room_not_joinable"
+                "Místnost je plná nebo hra už začala.", "room_not_joinable"
             ))
             return False
 
@@ -375,7 +375,7 @@ class Room:
             return False
         if self.player_count < 2:
             await self._broadcast(mk_error(
-                "Need at least 2 players to start.", "not_enough_players"
+                "Ke hře jsou potřeba aspoň 2 hráči.", "not_enough_players"
             ))
             return False
 
@@ -433,7 +433,7 @@ class Room:
         """
         handler = self._message_handlers.get(msg_type)
         if handler is None:
-            await client.send(mk_error(f"Unknown action: {msg_type}", "unknown_action"))
+            await client.send(mk_error(f"Neznámá akce: {msg_type}", "unknown_action"))
             return
 
         await handler(client, payload)
@@ -446,7 +446,7 @@ class Room:
         self, client: ConnectedClient, payload: DrawCardsPayload
     ) -> None:
         if not self._game:
-            await client.send(mk_error("Game not started.", "game_not_started"))
+            await client.send(mk_error("Hra ještě nezačala.", "game_not_started"))
             return
 
         result = self._game.action_draw_cards(client.player_id, payload.count)
@@ -460,7 +460,7 @@ class Room:
         self, client: ConnectedClient, payload: PlayCardPayload
     ) -> None:
         if not self._game:
-            await client.send(mk_error("Game not started.", "game_not_started"))
+            await client.send(mk_error("Hra ještě nezačala.", "game_not_started"))
             return
 
         result = self._game.action_play_card(
@@ -477,7 +477,7 @@ class Room:
         self, client: ConnectedClient, payload: DiscardCardPayload
     ) -> None:
         if not self._game:
-            await client.send(mk_error("Game not started.", "game_not_started"))
+            await client.send(mk_error("Hra ještě nezačala.", "game_not_started"))
             return
 
         result = self._game.action_discard_card(client.player_id, payload.card_uid)
@@ -490,17 +490,17 @@ class Room:
         self, client: ConnectedClient, payload: StartGamePayload
     ) -> None:
         if client.player_id != self._host_player_id:
-            await client.send(mk_error("Only the host can start the game.", "not_host"))
+            await client.send(mk_error("Hru může spustit jen host.", "not_host"))
             return
         if self.mode in ("vydrz", "vydrz_rucne"):
             if await self.start_vydrz():
                 await client.send(mk_action_ack("start_game"))
             return
         if self._deck_factory is None:
-            await client.send(mk_error("Server has no deck configured.", "no_deck"))
+            await client.send(mk_error("Server nemá nastavený balíček.", "no_deck"))
             return
         if self.phase != RoomPhase.LOBBY:
-            await client.send(mk_error("Game already started.", "already_started"))
+            await client.send(mk_error("Hra už začala.", "already_started"))
             return
         # start_game() reports its own failures (e.g. not enough players).
         if await self.start_game(self._deck_factory()):
@@ -510,13 +510,13 @@ class Room:
 
     async def _handle_set_mode(self, client: ConnectedClient, payload: SetModePayload) -> None:
         if client.player_id != self._host_player_id:
-            await client.send(mk_error("Only the host can change the mode.", "not_host"))
+            await client.send(mk_error("Režim může měnit jen host.", "not_host"))
             return
         if self.phase != RoomPhase.LOBBY:
-            await client.send(mk_error("The mode cannot change after the start.", "already_started"))
+            await client.send(mk_error("Po začátku hry už režim nejde změnit.", "already_started"))
             return
         if payload.mode not in MODES:
-            await client.send(mk_error(f"Unknown mode {payload.mode!r}.", "unknown_mode"))
+            await client.send(mk_error(f"Neznámý režim {payload.mode!r}.", "unknown_mode"))
             return
         self.mode = payload.mode
         await self._broadcast_room_state()
@@ -525,7 +525,7 @@ class Room:
         if self.phase != RoomPhase.LOBBY:
             return False
         if self._vydrz_content is None:
-            await self._broadcast(mk_error("Výdrž has no card data configured.", "no_content"))
+            await self._broadcast(mk_error("Výdrž nemá nastavená data karet.", "no_content"))
             return False
         ids = list(self._clients.keys())
         names = {pid: c.display_name for pid, c in self._clients.items()}
@@ -552,7 +552,7 @@ class Room:
 
     async def _handle_vydrz_choose(self, client: ConnectedClient, payload: VydrzChoosePayload) -> None:
         if self._vydrz is None:
-            await client.send(mk_error("Game not started.", "game_not_started"))
+            await client.send(mk_error("Hra ještě nezačala.", "game_not_started"))
             return
         if isinstance(self._vydrz, ManualVydrzGame):
             await client.send(mk_error("Tohle je jiný režim.", "wrong_mode"))
@@ -589,10 +589,10 @@ class Room:
 
     async def _handle_vydrz_next_round(self, client: ConnectedClient, payload: VydrzNextRoundPayload) -> None:
         if self._vydrz is None:
-            await client.send(mk_error("Game not started.", "game_not_started"))
+            await client.send(mk_error("Hra ještě nezačala.", "game_not_started"))
             return
         if client.player_id != self._host_player_id:
-            await client.send(mk_error("Only the host can continue.", "not_host"))
+            await client.send(mk_error("Pokračovat může jen host.", "not_host"))
             return
         result = self._vydrz.action_next_round()
         if not result.ok:
@@ -605,7 +605,7 @@ class Room:
         self, client: ConnectedClient, payload: EndTurnPayload
     ) -> None:
         if not self._game:
-            await client.send(mk_error("Game not started.", "game_not_started"))
+            await client.send(mk_error("Hra ještě nezačala.", "game_not_started"))
             return
 
         result = self._game.action_end_turn(client.player_id)

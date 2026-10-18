@@ -229,7 +229,7 @@ export class Store {
       const gp = this._state.game.players.find(p => p.player_id === player_id);
       if (gp) gp.connected = true;
     }
-    this._notify(`${display_name} reconnected`, "info");
+    this._notify(`${display_name} se znovu připojil(a)`, "info");
     bus.emit("store:lobby_updated", this._state.lobby);
   }
 
@@ -240,7 +240,7 @@ export class Store {
       const gp = this._state.game.players.find(p => p.player_id === player_id);
       if (gp) gp.connected = false;
     }
-    this._notify(`${display_name} disconnected`, "warn");
+    this._notify(`${display_name} se odpojil(a)`, "warn");
     bus.emit("store:lobby_updated", this._state.lobby);
   }
 

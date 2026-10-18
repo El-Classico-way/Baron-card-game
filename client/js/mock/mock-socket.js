@@ -24,11 +24,17 @@
 
 import { bus } from "../core/events.js";
 import { MockVydrz } from "./mock-vydrz.js";
+import { MockManual } from "./mock-vydrz-manual.js";
 
 const BOT_NAMES = ["Ada", "Bruno", "Cleo", "Dax", "Esme", "Finn"];
 const SUITS     = ["spades", "hearts", "diamonds", "clubs"];
 const RANKS     = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 const ME        = "me";
+const MODES     = [
+  { id: "rezba", name: "Řežba", family: "rezba", variant: "", playable: false },
+  { id: "vydrz", name: "Výdrž", family: "vydrz", variant: "Automaticky", playable: true },
+  { id: "vydrz_rucne", name: "Výdrž", family: "vydrz", variant: "Ručně", playable: true },
+];
 const STARTING_HAND = 4;     // placeholder numbers, not rules
 const MOCK_HP       = 4;
 const DECK_SIZE     = 60;
@@ -39,12 +45,12 @@ const _pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 function makeCard() {
   const n = ++_uid;
   return {
-    uid: `mock-${n}`, id: "placeholder", name: `Card ${n}`,
+    uid: `mock-${n}`, id: "placeholder", name: `Karta ${n}`,
     suit: _pick(SUITS), rank: _pick(RANKS),
     // Every third card gets long text so wrapping in the inspector can be judged.
     description: n % 3 === 0
-      ? "Placeholder text standing in for a card's rules. The real text comes from the server and may run to several lines, so the inspector wraps it comfortably even on a small screen."
-      : "Placeholder card. Real card text will come from the server.",
+      ? "Zástupný text místo pravidel karty. Skutečný text pošle server a může mít i několik řádků, takže se v detailu karty musí pohodlně zalamovat i na malém displeji."
+      : "Zástupná karta. Skutečný text karty přijde ze serveru.",
     has_art: false,
   };
 }
@@ -67,7 +73,7 @@ export class MockSocket {
     this._turnPhase = "draw";
     this._turnNo = 0;
     this._name = "You";
-    this._mode = mode === "rezba" ? "rezba" : "vydrz";    // lobby selection, like the real server
+    this._mode = ["rezba", "vydrz", "vydrz_rucne"].includes(mode) ? mode : "vydrz";    // lobby selection, like the real server
     this._vydrz = null;
   }
 
@@ -85,7 +91,7 @@ export class MockSocket {
           const p = { player_id: `bot${i + 1}`, display_name: BOT_NAMES[i], hand: [], connected: true };
           this._players.push(p);
           this._emitRoomState();
-          if (this._autostart && i === this._botCount - 1) this._later(200, () => (this._mode === "vydrz" ? this._startVydrz() : this._start()));
+          if (this._autostart && i === this._botCount - 1) this._later(200, () => (this._mode === "rezba" ? this._start() : this._startVydrz()));
         });
       }
     });
@@ -96,8 +102,10 @@ export class MockSocket {
 
   send(type, payload = {}) {
     const handler = {
-      start_game: () => (this._mode === "vydrz" ? this._startVydrz() : this._start()),
-      set_mode: () => { if (payload.mode === "vydrz" || payload.mode === "rezba") { this._mode = payload.mode; this._emitRoomState(); } },
+      start_game: () => (this._mode === "rezba" ? this._start() : this._startVydrz()),
+      set_mode: () => { if (MODES.some(m => m.id === payload.mode)) { this._mode = payload.mode; this._emitRoomState(); } },
+      vydrz_plan: () => this._vydrzDo(() => this._vydrz?.setPlan?.(ME, (payload.pairs ?? []).map(p => [p.location_uid, p.existence_uid])), "vydrz_plan"),
+      vydrz_submit: () => this._vydrzDo(() => this._vydrz?.submit?.(ME, payload.value), "vydrz_submit"),
       vydrz_choose: () => this._vydrzDo(() => this._vydrz?.choose(ME, payload.location_uid, payload.existence_uid), "vydrz_choose"),
       vydrz_next_round: () => this._vydrzDo(() => this._vydrz?.nextRound(), "vydrz_next_round"),
       draw_cards: () => this._draw(),
@@ -124,7 +132,7 @@ export class MockSocket {
     bus.emit("server:room_state", {
       room_id: "DEMO", host_player_id: ME, game_phase: this._phase, max_players: 7,
       mode: this._mode,
-      modes: [{ id: "rezba", name: "Řežba", playable: false }, { id: "vydrz", name: "Výdrž", playable: true }],
+      modes: MODES,
       players: this._players.map(p => ({ player_id: p.player_id, display_name: p.display_name, connected: p.connected })),
     });
   }
@@ -148,7 +156,8 @@ export class MockSocket {
   _startVydrz() {
     if (this._vydrz || this._players.length < 2) return;
     this._phase = "playing";
-    this._vydrz = new MockVydrz(
+    const Engine = this._mode === "vydrz_rucne" ? MockManual : MockVydrz;
+    this._vydrz = new Engine(
       this._players.map(p => ({ id: p.player_id, name: p.display_name })),
       () => this._emitVydrz(),
     );
@@ -175,7 +184,7 @@ export class MockSocket {
   }
 
   _draw() {
-    if (!this._isMyTurn() || this._turnPhase !== "draw") return this._fail("Not your draw phase.");
+    if (!this._isMyTurn() || this._turnPhase !== "draw") return this._fail("Nejsi ve fázi lízání.");
     const me = this._me();
     me.hand.push(makeCard(), makeCard());
     this._drawn += 2;
@@ -186,9 +195,9 @@ export class MockSocket {
   }
 
   _play(uid, targetId) {
-    if (!this._isMyTurn() || this._turnPhase !== "play") return this._fail("Not your play phase.");
+    if (!this._isMyTurn() || this._turnPhase !== "play") return this._fail("Nejsi ve fázi hraní.");
     const card = this._take(this._me(), uid);
-    if (!card) return this._fail("Card not in hand.");
+    if (!card) return this._fail("Tuhle kartu nemáš v ruce.");
     this._discard.push(card);
     bus.emit("server:action_ack", { action: "play_card" });
     bus.emit("server:game_event", { event_type: "card_played", data: { player_id: ME, card_id: card.id, card_name: card.name, target_id: targetId ?? null } });
@@ -197,14 +206,14 @@ export class MockSocket {
 
   _discardFromHand(uid) {
     const card = this._take(this._me(), uid);
-    if (!card) return this._fail("Card not in hand.");
+    if (!card) return this._fail("Tuhle kartu nemáš v ruce.");
     this._discard.push(card);
     bus.emit("server:action_ack", { action: "discard_card" });
     this._snapshot();
   }
 
   _endTurn() {
-    if (!this._isMyTurn()) return this._fail("Not your turn.");
+    if (!this._isMyTurn()) return this._fail("Nejsi na tahu.");
     bus.emit("server:action_ack", { action: "end_turn" });
     this._nextTurn();
   }
@@ -265,7 +274,7 @@ export class MockSocket {
           player_id: p.player_id, display_name: p.display_name,
           hp: MOCK_HP, max_hp: MOCK_HP, status: "alive", hand_count: p.hand.length,
           // One fake equipment badge so that layout can be judged.
-          equipment: i === 1 ? [{ uid: "mock-eq", id: "placeholder", name: "Placeholder item", suit: "clubs", rank: "7" }] : [],
+          equipment: i === 1 ? [{ uid: "mock-eq", id: "placeholder", name: "Zástupný předmět", suit: "clubs", rank: "7" }] : [],
           role: null, connected: true,
         })),
       },

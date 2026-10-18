@@ -124,7 +124,7 @@ export class Controller {
     } else {
       // Prompt user to pick a target.
       bus.emit("render:prompt_target", {
-        message: "Select a target player",
+        message: "Vyber cíl",
         cardId,
       });
     }

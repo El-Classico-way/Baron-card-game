@@ -172,9 +172,9 @@ export class Renderer {
       const hint = document.getElementById("lobby-hint");
       if (hint) {
         hint.textContent = !isHost
-          ? "Waiting for the host to start the game…"
-          : enoughPlayers ? "Everyone in? Start whenever you're ready."
-                          : "Waiting for at least one more player…";
+          ? "Čeká se, až host spustí hru…"
+          : enoughPlayers ? "Jsou všichni? Začni, kdykoli budete připraveni."
+                          : "Čeká se aspoň na jednoho dalšího hráče…";
       }
     }
   }
@@ -243,7 +243,7 @@ export class Renderer {
         </div>
         <div class="opponent__meta">
           <span class="opponent__hp-label">${player.hp}/${player.max_hp}</span>
-          <span class="opponent__hand-count" aria-label="${player.hand_count ?? 0} cards in hand">${player.hand_count ?? 0}</span>
+          <span class="opponent__hand-count" aria-label="${player.hand_count ?? 0} karet v ruce">${player.hand_count ?? 0}</span>
         </div>
         ${equipment.length > 0 ? `
           <div class="opponent__equipment">
@@ -312,18 +312,40 @@ export class Renderer {
     }
   }
 
-  /** Segmented control for the game mode; only the host can change it. */
+  /**
+   * Game mode (family) and, for games with variants, how scoring is counted.
+   * Only the host can change them.
+   */
   _renderModeSwitch() {
     const box = document.getElementById("mode-switch");
     if (!box) return;
     const { lobby, myPlayerId } = this._store.state;
     const isHost = myPlayerId === lobby.hostPlayerId;
-    box.innerHTML = (lobby.modes ?? []).map(m => {
-      const on = m.id === lobby.mode;
-      const disabled = !m.playable || !isHost;
+    const modes = lobby.modes ?? [];
+    const current = modes.find(m => m.id === lobby.mode);
+    const families = [...new Set(modes.map(m => m.family ?? m.id))];
+
+    box.innerHTML = families.map((fam) => {
+      const members = modes.filter(m => (m.family ?? m.id) === fam);
+      const playable = members.some(m => m.playable);
+      const on = (current?.family ?? current?.id) === fam;
+      const target = members.find(m => m.id === lobby.mode) ?? members[0];
       return `<button class="seg__btn${on ? " is-on" : ""}" type="button" role="radio" aria-checked="${on}"
-                data-mode="${_esc(m.id)}" ${disabled ? "disabled" : ""}>${_esc(m.name)}${m.playable ? "" : " <small>(brzy)</small>"}</button>`;
+                data-mode="${_esc(target.id)}" ${!playable || !isHost ? "disabled" : ""}>${_esc(members[0].name)}${playable ? "" : " <small>(brzy)</small>"}</button>`;
     }).join("");
+
+    const variants = modes.filter(m => (m.family ?? m.id) === (current?.family ?? current?.id) && m.variant);
+    const vbox = document.getElementById("variant-box");
+    if (vbox) vbox.hidden = variants.length < 2;
+    const vs = document.getElementById("variant-switch");
+    if (vs) {
+      vs.innerHTML = variants.map(m => `<button class="seg__btn${m.id === lobby.mode ? " is-on" : ""}" type="button" role="radio"
+          aria-checked="${m.id === lobby.mode}" data-mode="${_esc(m.id)}" ${!isHost ? "disabled" : ""}>${_esc(m.variant)}</button>`).join("");
+    }
+    const hint = document.getElementById("variant-hint");
+    if (hint) hint.textContent = lobby.mode === "vydrz_rucne"
+      ? "Všech 8 dvojic si naplánuješ předem a každé kolo si čísla spočítáš sám(a)."
+      : "Hra čísla spočítá sama, s animací.";
   }
 
   renderOpponentHandCount(playerId) {
@@ -420,10 +442,10 @@ export class Renderer {
 
     if (this._el.turnIndicator) {
       const phase = game.turn.phase;
-      const suffix = isMyTurn && phase === "discard" ? " — discard down to your HP" : "";
+      const suffix = isMyTurn && phase === "discard" ? " – odhoď karty na počet životů" : "";
       this._el.turnIndicator.textContent = isMyTurn
-        ? `Your turn${suffix}`
-        : `${currentPlayer?.display_name ?? "?"}'s turn`;
+        ? `Tvůj tah${suffix}`
+        : `Hraje ${currentPlayer?.display_name ?? "?"}`;
       this._el.turnIndicator.dataset.phase = phase;
       this._el.turnIndicator.classList.toggle("turn-indicator--mine", isMyTurn);
     }
@@ -503,10 +525,10 @@ export class Renderer {
 
     el.innerHTML = `
       <div class="game-over ${iWon ? "game-over--win" : "game-over--lose"}">
-        <h2 class="game-over__title">${iWon ? "Victory!" : "Defeat"}</h2>
-        <p class="game-over__winners">${_esc(winnerNames)} win</p>
+        <h2 class="game-over__title">${iWon ? "Vítězství!" : "Porážka"}</h2>
+        <p class="game-over__winners">Vyhrává: ${_esc(winnerNames)}</p>
         <p class="game-over__reason">${_esc(reason ?? "")}</p>
-        <button class="btn" id="btn-play-again">Play Again</button>
+        <button class="btn" id="btn-play-again">Hrát znovu</button>
       </div>
     `;
     el.hidden = false;
@@ -549,9 +571,9 @@ export class Renderer {
 
     el.innerHTML = `
       <div class="reaction-window">
-        <p>Play a <strong>Missed!</strong> to dodge?</p>
+        <p>Zahraj <strong>Missed!</strong> a uhni?</p>
         <div class="reaction-window__timer" id="reaction-timer">${timeoutSeconds}</div>
-        <button class="btn btn--danger" id="btn-skip-reaction">Take the hit</button>
+        <button class="btn btn--danger" id="btn-skip-reaction">Přijmout zásah</button>
       </div>
     `;
     el.hidden = false;
@@ -618,8 +640,8 @@ export class Renderer {
     el.hidden = status === "connected";
     el.className = `connection-banner connection-banner--${status}`;
     el.textContent = {
-      disconnected:  "Connection lost — attempting to reconnect…",
-      reconnecting:  "Reconnecting…",
+      disconnected:  "Spojení přerušeno, zkouším se připojit znovu…",
+      reconnecting:  "Připojuji znovu…",
     }[status] ?? "";
   }
 
@@ -656,9 +678,9 @@ function _esc(str) {
 
 function _roleDescription(role) {
   return {
-    sheriff:  "Eliminate all Outlaws and the Renegade. Your HP is public.",
-    deputy:   "Protect the Sheriff. Win when all enemies are eliminated.",
-    outlaw:   "Eliminate the Sheriff to win. Draw 3 cards if you eliminate someone.",
-    renegade: "Be the last one standing. Eliminate everyone — even outlaws.",
+    sheriff:  "Vyřaď všechny psance a odpadlíka. Tvoje životy jsou veřejné.",
+    deputy:   "Chraň šerifa. Vyhráš, když jsou všichni nepřátelé vyřazeni.",
+    outlaw:   "Vyřaď šerifa. Za každého vyřazeného líznu 3 karty.",
+    renegade: "Přežij jako poslední. Vyřaď všechny, i psance.",
   }[role] ?? "";
 }

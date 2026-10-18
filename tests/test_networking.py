@@ -243,7 +243,10 @@ def test_manual_vydrz_over_websocket():
             assert _drain_until(a, "action_ack")["payload"]["action"] == "vydrz_submit"
             a.send_json({"type": "vydrz_submit", "payload": {"value": 5}})
             assert _drain_until(a, "error")["payload"]["code"] == "action_failed"      # already entered
-            mid = _state(b, phase="calculating")
+            for _ in range(6):                      # Bob's queue also holds older snapshots
+                mid = _state(b, phase="calculating")
+                if mid["calc"]["entries"]:
+                    break
             assert any(e["tag"] == "svindlir" for e in mid["calc"]["entries"].values())
             assert "correct" not in str(mid["calc"]["entries"])
             b.send_json({"type": "vydrz_submit", "payload": {"value": 150}})

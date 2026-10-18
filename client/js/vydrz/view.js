@@ -14,7 +14,7 @@ import {
   cardBack, cardFront, cardMeta, characterFront, existenceFront, locationFront, drinkFront,
 } from "./cards.js";
 import { ResultOverlay } from "./result-overlay.js";
-import { getSettings, updateSettings } from "./settings.js";
+import { getSettings, updateSettings, SPEED_LABELS } from "./settings.js";
 import * as sfx from "./sound.js";
 
 const LONG_PRESS_MS = 450;
@@ -118,6 +118,8 @@ export class VydrzView {
       if (e.target.closest("[data-close]")) { settings.hidden = true; return; }
       const sound = e.target.closest("[data-set-sound]");
       if (sound) { updateSettings({ sound: sound.dataset.setSound === "on" }); sfx.unlockAudio(); sfx.pop(); this._renderSettings(); }
+      const speed = e.target.closest("[data-set-speed]");
+      if (speed) { updateSettings({ speed: parseInt(speed.dataset.setSpeed, 10) }); sfx.unlockAudio(); sfx.tick(1, 0); this._renderSettings(); }
     });
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
@@ -152,6 +154,7 @@ export class VydrzView {
   _locked() { return !!this._me()?.locked && !this._changing; }
 
   _onState(state) {
+    if (state.mode !== "vydrz") return;           // the manual variant has its own view
     const prevRound = this._state?.round;
     this._state = state;
     this._showPanel();
@@ -367,13 +370,15 @@ export class VydrzView {
 
   _renderSettings() {
     const st = getSettings();
+    const speeds = SPEED_LABELS.map((label, i) =>
+      `<button class="seg__btn${st.speed === i + 1 ? " is-on" : ""}" data-set-speed="${i + 1}" type="button">${label}</button>`).join("");
     this._el.settings.innerHTML = `
       <div class="vs__backdrop" data-close></div>
       <div class="vs__panel vs__panel--small">
         <header class="vs__head"><h2>Nastavení</h2><button class="hud__btn" data-close type="button" aria-label="Zavřít">✕</button></header>
-        <h3>Počítání bodů</h3>
-        <div class="seg"><button class="seg__btn is-on" type="button" disabled>Automaticky</button>
-          <button class="seg__btn" type="button" disabled title="Připravujeme">Ručně (brzy)</button></div>
+        <h3>Rychlost automatického počítání</h3>
+        <div class="seg seg--wrap">${speeds}</div>
+        <p class="vs__note vs__note--dim">Platí jen pro režim Výdrž (automaticky). Nastavení je jen na tomto zařízení.</p>
         <h3>Zvuk</h3>
         <div class="seg"><button class="seg__btn${st.sound ? " is-on" : ""}" data-set-sound="on" type="button">Zapnutý</button>
           <button class="seg__btn${st.sound ? "" : " is-on"}" data-set-sound="off" type="button">Vypnutý</button></div>

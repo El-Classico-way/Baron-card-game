@@ -152,16 +152,42 @@ def test_full_mock_game_to_the_end(page, base_url):
     assert not page.js_errors
 
 
-def test_settings_sheet_toggles_sound(page, base_url):
+def test_settings_sheet_sound_and_speed(page, base_url):
     _table(page, base_url)
     page.click("#vy-settings-btn")
     expect(page.locator("#vy-settings")).to_be_visible()
-    expect(page.locator("#vy-settings .seg__btn:disabled")).to_have_count(2)   # scoring switch: auto only (manual planned)
+    speeds = page.locator("#vy-settings [data-set-speed]")
+    expect(speeds).to_have_count(4)                                 # fastest (current pace) + three slower
+    expect(speeds.nth(0)).to_have_class("seg__btn is-on")           # the existing pace stays the default
+    expect(speeds.nth(0)).to_have_text("Nejrychlejší")
+    page.click('[data-set-speed="3"]')
+    expect(page.locator('[data-set-speed="3"]')).to_have_class("seg__btn is-on")
+    assert page.evaluate("JSON.parse(localStorage.getItem('baron.settings')).speed") == 3
     page.click('[data-set-sound="off"]')
     expect(page.locator('[data-set-sound="off"]')).to_have_class("seg__btn is-on")
     assert page.evaluate("JSON.parse(localStorage.getItem('baron.settings')).sound") is False
     page.click("#vy-settings button[data-close]")
     expect(page.locator("#vy-settings")).to_be_hidden()
+
+
+def test_slower_speed_stretches_the_counting(page, base_url):
+    """Speed 4 is slower than speed 1: the animation takes clearly longer to reach the end."""
+    import time
+    if page.viewport_size["width"] != 390:
+        pytest.skip("timing check runs on one viewport only")
+    durations = {}
+    for speed in (1, 4):
+        _table(page, base_url, bots=1)
+        page.evaluate(f"localStorage.setItem('baron.settings', JSON.stringify({{sound: false, speed: {speed}}}))")
+        page.reload()
+        expect(page.locator("#vydrz-panel")).to_be_visible(timeout=8000)
+        _pick_and_confirm(page)
+        expect(page.locator(".vr__panel")).to_be_visible(timeout=15000)
+        t0 = time.time()
+        expect(page.locator(".vr__next")).to_be_visible(timeout=60000)
+        durations[speed] = time.time() - t0
+        assert page.evaluate("getComputedStyle(document.getElementById('vy-result')).getPropertyValue('--vr-speed')").strip() == str({1: 1, 4: 4}[speed])
+    assert durations[4] > durations[1] * 2, durations
 
 
 # ---------------------------------------------------------------------------

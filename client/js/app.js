@@ -37,6 +37,8 @@ import { bus }         from "./core/events.js";
 import { SocketClient } from "./core/socket.js";
 import { CardInspector } from "./ui/card-inspector.js";
 import { VydrzView }     from "./vydrz/view.js";
+import { ManualView }    from "./vydrz/manual-view.js";
+import { Numpad }        from "./vydrz/numpad.js";
 import { MockSocket }   from "./mock/mock-socket.js";
 import { Store }        from "./core/store.js";
 import { Renderer }     from "./game/renderer.js";
@@ -92,11 +94,20 @@ function boot() {
     getHostId: () => store.state.lobby.hostPlayerId,
     onLeave: () => _leave(socket),
   });
-  on(document.getElementById("lobby-settings-btn"), "click", () => vydrz._openSettings());
-  on(document.getElementById("mode-switch"), "click", (e) => {
-    const btn = e.target.closest("[data-mode]");
-    if (btn && !btn.disabled) socket.send("set_mode", { mode: btn.dataset.mode });
+  const openSettings = () => vydrz._openSettings();
+  new ManualView({
+    socket, inspector, openSettings,
+    numpad: new Numpad(document.getElementById("vm-keypad")),
+    getHostId: () => store.state.lobby.hostPlayerId,
+    onLeave: () => _leave(socket),
   });
+  on(document.getElementById("lobby-settings-btn"), "click", openSettings);
+  for (const id of ["mode-switch", "variant-switch"]) {
+    on(document.getElementById(id), "click", (e) => {
+      const btn = e.target.closest("[data-mode]");
+      if (btn && !btn.disabled) socket.send("set_mode", { mode: btn.dataset.mode });
+    });
+  }
 
   // 8. Wire join / lobby forms
   _wireJoinForm(elements, socket);
@@ -108,6 +119,11 @@ function boot() {
   on(document.getElementById("demo-btn"), "click", () => {
     location.search = "?mock=1";
   });
+
+  // Expose to console for debugging in development.
+  if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+    window.__app = { store, socket, renderer, bus };
+  }
 
   // 9. Mock mode skips the landing page; otherwise try to resume a session.
   if (mock) {
@@ -130,10 +146,6 @@ function boot() {
     _showPanel(elements, "lobby");
   }
 
-  // Expose to console for debugging in development.
-  if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
-    window.__app = { store, socket, renderer, bus };
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -154,14 +166,14 @@ function _wireJoinForm(elements, socket) {
     const mode = e.submitter?.dataset.mode ?? (roomId ? "join" : "create");
 
     if (!displayName) {
-      _showFormError(joinForm, "Please enter a name first.");
+      _showFormError(joinForm, "Nejdřív zadej jméno.");
       displayNameInput?.focus();
       return;
     }
 
     if (mode === "join") {
       if (!roomId) {
-        _showFormError(joinForm, "Enter the room code your friend sent you.");
+        _showFormError(joinForm, "Zadej kód místnosti, který ti kamarád poslal.");
         roomIdInput?.focus();
         return;
       }
@@ -186,7 +198,7 @@ async function _createRoomAndConnect(socket, displayName) {
   } catch (err) {
     console.error("[App] Failed to create room:", err);
     bus.emit("store:notification", {
-      message: "Could not create room. Is the server running?",
+      message: "Místnost se nepodařilo vytvořit. Běží server?",
       type:    "error",
       id:      Date.now(),
     });
@@ -316,14 +328,14 @@ async function _shareInvite(store) {
   const url = `${location.origin}${location.pathname}?room=${encodeURIComponent(roomId)}`;
   try {
     if (navigator.share) {
-      await navigator.share({ title: "Join my game", url });
+      await navigator.share({ title: "Připoj se do mé hry", url });
       return;
     }
     await navigator.clipboard.writeText(url);
-    bus.emit("store:notification", { message: "Invite link copied", type: "success", id: Date.now() });
+    bus.emit("store:notification", { message: "Pozvánka zkopírována", type: "success", id: Date.now() });
   } catch (err) {
     if (err?.name === "AbortError") return;   // user dismissed the share sheet
-    window.prompt("Copy this invite link:", url);
+    window.prompt("Zkopíruj tuto pozvánku:", url);
   }
 }
 
@@ -348,6 +360,6 @@ function _leave(socket) {
 function _wireLeaveButtons(socket) {
   on(document.getElementById("leave-btn"), "click", () => _leave(socket));
   on(document.getElementById("leave-game-btn"), "click", () => {
-    if (window.confirm("Leave this game?")) _leave(socket);
+    if (window.confirm("Opustit hru?")) _leave(socket);
   });
 }

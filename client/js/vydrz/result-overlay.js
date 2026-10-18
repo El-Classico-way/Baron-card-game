@@ -16,6 +16,7 @@
 
 import { drinkFront, cardBack, drinkInfo, fmtStat } from "./cards.js";
 import * as sfx from "./sound.js";
+import { getSettings, SPEED_FACTOR } from "./settings.js";
 
 const SOURCES = ["postava", "lokace", "existence"];
 const SOURCE_LABEL = { postava: "Post.", lokace: "Lok.", existence: "Exist." };
@@ -56,9 +57,12 @@ export class ResultOverlay {
     this._build(result, ctx);
     this._root.hidden = false;
 
+    // Counting speed (settings): every pause is stretched, and so are the pops.
+    const factor = SPEED_FACTOR[getSettings().speed - 1] ?? 1;
+    this._root.style.setProperty("--vr-speed", String(factor));
     const wait = (ms) => new Promise((res) => {
       if (this._skip || ms <= 0) return res();
-      setTimeout(res, ms);
+      setTimeout(res, ms * factor);
     });
     const alive = () => token === this._token;
 

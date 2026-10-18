@@ -148,26 +148,26 @@ export class CardInspector {
     const hand  = this._source.kind === "hand" ? this._hand() : [];
     const index = hand.findIndex(c => c.uid === card.uid);
     const suit  = SUIT_LABELS[card.suit] ?? card.suit;
-    const where = this._source.kind === "discard" ? "Top of the discard pile" : "";
+    const where = this._source.kind === "discard" ? "Vršek odhazovacího balíčku" : "";
 
     this._root.innerHTML = `
       <div class="inspector__backdrop" data-close></div>
       <div class="inspector__sheet" role="document">
-        <button class="inspector__close" type="button" data-close aria-label="Close card view">✕</button>
+        <button class="inspector__close" type="button" data-close aria-label="Zavřít detail karty">✕</button>
         <div class="inspector__card">${CardView.buildInspectCardHTML(card)}</div>
         <div class="inspector__text">
           ${where ? `<p class="inspector__where">${_esc(where)}</p>` : ""}
           <h2 class="inspector__name" id="inspector-title">${_esc(card.name)}</h2>
-          <p class="inspector__meta">${_esc(card.rank)} of ${_esc(suit)}</p>
+          <p class="inspector__meta">${_esc(card.rank)} ${_esc(suit)}</p>
           ${card.description
             ? `<p class="inspector__desc">${_esc(card.description)}</p>`
-            : `<p class="inspector__desc inspector__desc--none">No card text available.</p>`}
+            : `<p class="inspector__desc inspector__desc--none">Karta nemá žádný text.</p>`}
         </div>
         ${hand.length > 1 ? `
           <div class="inspector__nav">
-            <button class="btn btn--ghost btn--small" type="button" data-nav="-1" aria-label="Previous card">‹ Prev</button>
+            <button class="btn btn--ghost btn--small" type="button" data-nav="-1" aria-label="Předchozí karta">‹ Zpět</button>
             <span class="inspector__count">${index + 1} / ${hand.length}</span>
-            <button class="btn btn--ghost btn--small" type="button" data-nav="1" aria-label="Next card">Next ›</button>
+            <button class="btn btn--ghost btn--small" type="button" data-nav="1" aria-label="Další karta">Další ›</button>
           </div>` : ""}
       </div>
     `;
