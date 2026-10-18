@@ -54,6 +54,7 @@ export class ManualView {
     this._value = 0;                       // the number being built with -/+ or the number pad
     this._valueDraw = null;                // draw_id the value belongs to (reset on a new draw)
     this._fresh = true;                    // next typed digit replaces the value
+    this._negPending = false;              // "-" typed before any digit (value is still 0)
 
     const $ = (id) => document.getElementById(id);
     this._el = { panel: $("vm-panel"), title: $("vm-title"), players: $("vm-players"), stage: $("vm-stage"), bar: $("vm-bar"), sheet: $("vy-sheet") };
@@ -356,13 +357,13 @@ export class ManualView {
 
   _paintValue() {
     const el = this._el.stage.querySelector("[data-value]");
-    if (el) el.textContent = signed(this._value);
+    if (el) el.textContent = this._negPending && this._value === 0 ? "\u22120" : signed(this._value);
   }
 
   _step(delta) {
     if (!this._canEnter()) return;
     this._value = Math.max(-MAX_VALUE, Math.min(MAX_VALUE, this._value + delta));
-    this._fresh = true;
+    this._fresh = true; this._negPending = false;
     sfx.unlockAudio(); sfx.tick(delta, this._value);
     this._paintValue();
   }
@@ -394,13 +395,16 @@ export class ManualView {
     if (["card-inspector", "vy-sheet", "vy-settings"].some(id => document.getElementById(id)?.hidden === false)) return;
     const k = e.key;
     if (/^[0-9]$/.test(k)) {
-      const neg = this._value < 0;
+      const neg = this._value < 0 || this._negPending;
+      this._negPending = false;
       const mag = this._fresh ? 0 : Math.abs(this._value);
       const next = Math.min(MAX_VALUE, mag * 10 + parseInt(k, 10));
       this._value = neg ? -next : next;
       this._fresh = false;
     } else if (k === "-" || k === "_") {
-      this._value = -this._value; this._fresh = false;
+      if (this._value === 0) this._negPending = !this._negPending;     // "-" first, digits after
+      else this._value = -this._value;
+      this._fresh = false;
     } else if (k === "Backspace") {
       this._value = Math.trunc(this._value / 10); this._fresh = false;
     } else if (k === "ArrowUp" || k === "ArrowRight" || k === "+" || k === "=") {
