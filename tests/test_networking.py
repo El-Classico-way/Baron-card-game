@@ -1,12 +1,26 @@
 """WebSocket integration tests using Starlette's in-process TestClient."""
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
+
 from fastapi.testclient import TestClient
 
 from networking.server import app, registry
 
 
+_pool = ThreadPoolExecutor(max_workers=8)
+
+
+def _recv(ws, timeout: float = 5.0) -> dict:
+    """receive_json with a timeout, so a missing message fails instead of hanging."""
+    future = _pool.submit(ws.receive_json)
+    try:
+        return future.result(timeout=timeout)
+    except FutureTimeout:
+        raise AssertionError("timed out waiting for a message from the server") from None
+
+
 def _drain_until(ws, wanted: str, limit: int = 20) -> dict:
     for _ in range(limit):
-        msg = ws.receive_json()
+        msg = _recv(ws)
         if msg["type"] == wanted:
             return msg
     raise AssertionError(f"never received {wanted!r}")
@@ -56,7 +70,9 @@ def test_host_starts_game_and_players_get_hands():
             # Non-host is refused.
             b.send_json({"type": "start_game", "payload": {}})
             assert _drain_until(b, "error")["payload"]["code"] == "not_host"
+            a.send_json({"type": "set_mode", "payload": {"mode": "rezba"}})
 
+            a.send_json({"type": "set_mode", "payload": {"mode": "rezba"}})
             a.send_json({"type": "start_game", "payload": {}})
             assert _drain_until(a, "private_hand")
             assert _drain_until(b, "private_hand")
@@ -70,12 +86,13 @@ def test_hand_is_refreshed_after_discarding():
              c.websocket_connect("/ws/roomE?display_name=Bob") as b:
             _drain_until(a, "joined")
             _drain_until(b, "joined")
+            a.send_json({"type": "set_mode", "payload": {"mode": "rezba"}})
             a.send_json({"type": "start_game", "payload": {}})
 
             hands = {id(a): _drain_until(a, "private_hand")["payload"],
                      id(b): _drain_until(b, "private_hand")["payload"]}
             turn = next(
-                m for m in (a.receive_json() for _ in range(20))
+                m for m in (_recv(a) for _ in range(20))
                 if m["type"] == "game_event"
                 and m["payload"]["event_type"] == "turn_started"
             )
@@ -104,6 +121,7 @@ def test_bang_over_websocket_deals_damage():
             _drain_until(a, "joined")
             _drain_until(b, "joined")
             room = registry._rooms["roomF"]
+            a.send_json({"type": "set_mode", "payload": {"mode": "rezba"}})
             a.send_json({"type": "start_game", "payload": {}})
             _drain_until(a, "private_hand")
             _drain_until(b, "private_hand")
@@ -125,3 +143,64 @@ def test_bang_over_websocket_deals_damage():
                 "card_uid": bang.uid, "target_id": victim.player_id}})
             _drain_until(ws, "action_ack")
             assert victim.hp == hp - 1
+
+
+def _state(ws, phase: str | None = None, round_: int | None = None) -> dict:
+    """Next vydrz_state, optionally skipping older ones until phase/round match."""
+    for _ in range(10):
+        st = _drain_until(ws, "vydrz_state")["payload"]
+        if (phase is None or st["phase"] == phase) and (round_ is None or st["round"] == round_):
+            return st
+    raise AssertionError("expected vydrz_state never arrived")
+
+
+def test_vydrz_full_round_over_websocket():
+    with TestClient(app) as c:
+        with c.websocket_connect("/ws/roomV?display_name=Alice") as a, \
+             c.websocket_connect("/ws/roomV?display_name=Bob") as b:
+            _drain_until(a, "joined")
+            _drain_until(b, "joined")
+
+            # Only the host may change the mode; unknown modes are refused.
+            b.send_json({"type": "set_mode", "payload": {"mode": "vydrz"}})
+            assert _drain_until(b, "error")["payload"]["code"] == "not_host"
+            a.send_json({"type": "set_mode", "payload": {"mode": "nope"}})
+            assert _drain_until(a, "error")["payload"]["code"] == "unknown_mode"
+            a.send_json({"type": "set_mode", "payload": {"mode": "vydrz"}})
+            room_state = _drain_until(a, "room_state")["payload"]
+            assert room_state["mode"] == "vydrz"
+            assert {m["id"] for m in room_state["modes"]} == {"rezba", "vydrz"}
+
+            a.send_json({"type": "start_game", "payload": {}})
+            sa, sb = _state(a), _state(b)
+            assert sa["phase"] == "choosing" and sa["round"] == 1
+            me_a = next(p for p in sa["players"] if p["player_id"] == sa["you"])
+            me_b = next(p for p in sb["players"] if p["player_id"] == sb["you"])
+            assert len(me_a["locations"]) == 8 and len(me_a["existences"]) == 8
+
+            def choose(ws, me):
+                ws.send_json({"type": "vydrz_choose", "payload": {
+                    "location_uid": me["locations"][0]["uid"],
+                    "existence_uid": me["existences"][0]["uid"]}})
+
+            # Another player's card is rejected.
+            a.send_json({"type": "vydrz_choose", "payload": {
+                "location_uid": me_b["locations"][0]["uid"],
+                "existence_uid": me_a["existences"][0]["uid"]}})
+            assert _drain_until(a, "error")["payload"]["code"] == "action_failed"
+
+            choose(a, me_a)
+            hidden = next(p for p in _state(b)["players"] if p["player_id"] == me_a["player_id"])
+            assert hidden["locked"] and hidden["pick"] is None      # hidden from Bob
+            choose(b, me_b)
+
+            after = _state(a, phase="reveal")
+            assert after["phase"] == "reveal"
+            assert len(after["last_result"]["drawn"]) == 3
+
+            # Only the host can continue.
+            b.send_json({"type": "vydrz_next_round", "payload": {}})
+            assert _drain_until(b, "error")["payload"]["code"] == "not_host"
+            a.send_json({"type": "vydrz_next_round", "payload": {}})
+            nxt = _state(a, phase="choosing", round_=2)
+            assert nxt["phase"] == "choosing" and nxt["round"] == 2

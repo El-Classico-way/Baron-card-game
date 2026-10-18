@@ -77,6 +77,8 @@ from game.events import (
 )
 from game.game import Game
 from game.state import GameState
+from modes import DEFAULT_MODE, MODES
+from modes.vydrz import Phase as VydrzPhase, VydrzContent, VydrzGame
 
 from effects.base import build_default_registry
 
@@ -88,6 +90,10 @@ from networking.protocol import (
     DiscardCardPayload,
     EndTurnPayload,
     StartGamePayload,
+    SetModePayload,
+    VydrzChoosePayload,
+    VydrzNextRoundPayload,
+    mk_vydrz_state,
     RequestSnapshotPayload,
     ChatPayload,
     # Outbound builders
@@ -157,8 +163,12 @@ class Room:
         self,
         room_id: str,
         deck_factory: Callable[[], list[Card]] | None = None,
+        vydrz_content: VydrzContent | None = None,
     ) -> None:
         self.room_id: str = room_id
+        self.mode: str = DEFAULT_MODE
+        self._vydrz_content = vydrz_content
+        self._vydrz: VydrzGame | None = None
         # Supplies the deck when the host starts the game.  Injected so the
         # room stays ignorant of card loading (see Room.start_game docs).
         self._deck_factory = deck_factory
@@ -190,8 +200,10 @@ class Room:
         cls,
         room_id: str | None = None,
         deck_factory: Callable[[], list[Card]] | None = None,
+        vydrz_content: VydrzContent | None = None,
     ) -> "Room":
-        return cls(room_id=room_id or uuid.uuid4().hex[:8], deck_factory=deck_factory)
+        return cls(room_id=room_id or uuid.uuid4().hex[:8], deck_factory=deck_factory,
+                   vydrz_content=vydrz_content)
 
     # ------------------------------------------------------------------
     # Properties
@@ -477,6 +489,10 @@ class Room:
         if client.player_id != self._host_player_id:
             await client.send(mk_error("Only the host can start the game.", "not_host"))
             return
+        if self.mode == "vydrz":
+            if await self.start_vydrz():
+                await client.send(mk_action_ack("start_game"))
+            return
         if self._deck_factory is None:
             await client.send(mk_error("Server has no deck configured.", "no_deck"))
             return
@@ -486,6 +502,74 @@ class Room:
         # start_game() reports its own failures (e.g. not enough players).
         if await self.start_game(self._deck_factory()):
             await client.send(mk_action_ack("start_game"))
+
+    # ---- mode selection and Výdrž ----
+
+    async def _handle_set_mode(self, client: ConnectedClient, payload: SetModePayload) -> None:
+        if client.player_id != self._host_player_id:
+            await client.send(mk_error("Only the host can change the mode.", "not_host"))
+            return
+        if self.phase != RoomPhase.LOBBY:
+            await client.send(mk_error("The mode cannot change after the start.", "already_started"))
+            return
+        if payload.mode not in MODES:
+            await client.send(mk_error(f"Unknown mode {payload.mode!r}.", "unknown_mode"))
+            return
+        self.mode = payload.mode
+        await self._broadcast_room_state()
+
+    async def start_vydrz(self) -> bool:
+        if self.phase != RoomPhase.LOBBY:
+            return False
+        if self._vydrz_content is None:
+            await self._broadcast(mk_error("Výdrž has no card data configured.", "no_content"))
+            return False
+        ids = list(self._clients.keys())
+        names = {pid: c.display_name for pid, c in self._clients.items()}
+        game = VydrzGame(ids, self._vydrz_content, display_names=names)
+        result = game.start()
+        if not result.ok:
+            await self._broadcast(mk_error(result.error, "start_failed"))
+            return False
+        self._vydrz = game
+        self.phase = RoomPhase.PLAYING
+        await self._broadcast_room_state()
+        await self._send_vydrz_state_all()
+        return True
+
+    async def _send_vydrz_state_all(self) -> None:
+        if self._vydrz is None:
+            return
+        for pid, client in self._clients.items():
+            if client.is_connected:
+                await client.send(mk_vydrz_state(self._vydrz.snapshot(pid)))
+        if self._vydrz.phase == VydrzPhase.FINISHED:
+            self.phase = RoomPhase.FINISHED
+
+    async def _handle_vydrz_choose(self, client: ConnectedClient, payload: VydrzChoosePayload) -> None:
+        if self._vydrz is None:
+            await client.send(mk_error("Game not started.", "game_not_started"))
+            return
+        result = self._vydrz.action_choose(client.player_id, payload.location_uid, payload.existence_uid)
+        if not result.ok:
+            await client.send(mk_error(result.error, "action_failed"))
+            return
+        await client.send(mk_action_ack("vydrz_choose"))
+        await self._send_vydrz_state_all()
+
+    async def _handle_vydrz_next_round(self, client: ConnectedClient, payload: VydrzNextRoundPayload) -> None:
+        if self._vydrz is None:
+            await client.send(mk_error("Game not started.", "game_not_started"))
+            return
+        if client.player_id != self._host_player_id:
+            await client.send(mk_error("Only the host can continue.", "not_host"))
+            return
+        result = self._vydrz.action_next_round()
+        if not result.ok:
+            await client.send(mk_error(result.error, "action_failed"))
+            return
+        await client.send(mk_action_ack("vydrz_next_round"))
+        await self._send_vydrz_state_all()
 
     async def _handle_end_turn(
         self, client: ConnectedClient, payload: EndTurnPayload
@@ -695,6 +779,8 @@ class Room:
             ],
             game_phase=self.phase,
             max_players=MAX_PLAYERS,
+            mode=self.mode,
+            modes=[{"id": k, **v} for k, v in MODES.items()],
         )
         await self._broadcast(packet)
 
@@ -706,6 +792,9 @@ class Room:
         own private hand merged in.  This is the only correct place for
         that merge — nowhere else may read another player's hand.
         """
+        if self._vydrz is not None:
+            await client.send(mk_vydrz_state(self._vydrz.snapshot(client.player_id)))
+            return
         if self._state is None:
             # Game not started yet — send lobby state instead.
             await self._broadcast_room_state()
@@ -741,6 +830,9 @@ class Room:
                 "discard_card":     self._handle_discard_card,
                 "end_turn":         self._handle_end_turn,
                 "start_game":       self._handle_start_game,
+                "set_mode":         self._handle_set_mode,
+                "vydrz_choose":     self._handle_vydrz_choose,
+                "vydrz_next_round": self._handle_vydrz_next_round,
                 "request_snapshot": self._handle_request_snapshot,
                 "chat":             self._handle_chat,
             }

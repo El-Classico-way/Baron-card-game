@@ -71,6 +71,7 @@ from networking.room import Room, RoomPhase
 
 from cards import load_default_registry
 from game.card import Card
+from modes.vydrz import VydrzContent, load_default_content
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,17 @@ CLIENT_DIR = Path(__file__).resolve().parent.parent / "client"
 # ---------------------------------------------------------------------------
 # Room registry
 # ---------------------------------------------------------------------------
+
+_vydrz_content = None
+
+
+def _vydrz() -> "VydrzContent":
+    """Výdrž card data, loaded once."""
+    global _vydrz_content
+    if _vydrz_content is None:
+        _vydrz_content = load_default_content()
+    return _vydrz_content
+
 
 def _default_deck() -> list[Card]:
     """Fresh deck from the base card pack (new Card instances every game)."""
@@ -121,14 +133,14 @@ class RoomRegistry:
         async with self._get_lock():
             room = self._rooms.get(room_id)
             if room is None:
-                room = Room.create(room_id=room_id, deck_factory=_default_deck)
+                room = Room.create(room_id=room_id, deck_factory=_default_deck, vydrz_content=_vydrz())
                 self._rooms[room_id] = room
                 logger.info("Created room %s.", room_id)
             return room
 
     async def create_new(self) -> Room:
         """Create a room with a server-generated id and register it."""
-        room = Room.create(deck_factory=_default_deck)
+        room = Room.create(deck_factory=_default_deck, vydrz_content=_vydrz())
         async with self._get_lock():
             self._rooms[room.room_id] = room
         logger.info("Created room %s (server-generated id).", room.room_id)
