@@ -36,6 +36,7 @@
 import { bus }         from "./core/events.js";
 import { SocketClient } from "./core/socket.js";
 import { CardInspector } from "./ui/card-inspector.js";
+import { VydrzView }     from "./vydrz/view.js";
 import { MockSocket }   from "./mock/mock-socket.js";
 import { Store }        from "./core/store.js";
 import { Renderer }     from "./game/renderer.js";
@@ -83,7 +84,19 @@ function boot() {
   const animator = new Animator(store);
 
   // Card inspector (enlarged card view); see js/ui/card-inspector.js.
-  new CardInspector(store, elements);
+  const inspector = new CardInspector(store, elements);
+
+  // Výdrž table (rendered only when the server runs that mode).
+  const vydrz = new VydrzView({
+    socket, inspector,
+    getHostId: () => store.state.lobby.hostPlayerId,
+    onLeave: () => _leave(socket),
+  });
+  on(document.getElementById("lobby-settings-btn"), "click", () => vydrz._openSettings());
+  on(document.getElementById("mode-switch"), "click", (e) => {
+    const btn = e.target.closest("[data-mode]");
+    if (btn && !btn.disabled) socket.send("set_mode", { mode: btn.dataset.mode });
+  });
 
   // 8. Wire join / lobby forms
   _wireJoinForm(elements, socket);
@@ -118,7 +131,7 @@ function boot() {
   }
 
   // Expose to console for debugging in development.
-  if (location.hostname === "localhost") {
+  if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
     window.__app = { store, socket, renderer, bus };
   }
 }
@@ -326,13 +339,14 @@ function _wireChatSheet() {
   on(close,  "click", () => set(false));
 }
 
+function _leave(socket) {
+  socket.disconnect();                      // also clears the stored session
+  location.href = location.pathname;        // back to the landing page
+}
+
 function _wireLeaveButtons(socket) {
-  const leave = () => {
-    socket.disconnect();                    // also clears the stored session
-    location.href = location.pathname;      // back to the landing page
-  };
-  on(document.getElementById("leave-btn"), "click", leave);
+  on(document.getElementById("leave-btn"), "click", () => _leave(socket));
   on(document.getElementById("leave-game-btn"), "click", () => {
-    if (window.confirm("Leave this game?")) leave();
+    if (window.confirm("Leave this game?")) _leave(socket);
   });
 }

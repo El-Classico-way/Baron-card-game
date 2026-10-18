@@ -23,6 +23,7 @@
  */
 
 import { bus } from "../core/events.js";
+import { MockVydrz } from "./mock-vydrz.js";
 
 const BOT_NAMES = ["Ada", "Bruno", "Cleo", "Dax", "Esme", "Finn"];
 const SUITS     = ["spades", "hearts", "diamonds", "clubs"];
@@ -66,6 +67,8 @@ export class MockSocket {
     this._turnPhase = "draw";
     this._turnNo = 0;
     this._name = "You";
+    this._mode = "vydrz";    // lobby selection, like the real server
+    this._vydrz = null;
   }
 
   // --- SocketClient API -------------------------------------------------
@@ -82,18 +85,21 @@ export class MockSocket {
           const p = { player_id: `bot${i + 1}`, display_name: BOT_NAMES[i], hand: [], connected: true };
           this._players.push(p);
           this._emitRoomState();
-          if (this._autostart && i === this._botCount - 1) this._later(200, () => this._start());
+          if (this._autostart && i === this._botCount - 1) this._later(200, () => (this._mode === "vydrz" ? this._startVydrz() : this._start()));
         });
       }
     });
   }
 
   tryResume() { return false; }
-  disconnect() { this._timers.forEach(clearTimeout); this._timers = []; }
+  disconnect() { this._timers.forEach(clearTimeout); this._timers = []; this._vydrz?.stop(); }
 
   send(type, payload = {}) {
     const handler = {
-      start_game: () => this._start(),
+      start_game: () => (this._mode === "vydrz" ? this._startVydrz() : this._start()),
+      set_mode: () => { if (payload.mode === "vydrz" || payload.mode === "rezba") { this._mode = payload.mode; this._emitRoomState(); } },
+      vydrz_choose: () => this._vydrzDo(() => this._vydrz?.choose(ME, payload.location_uid, payload.existence_uid), "vydrz_choose"),
+      vydrz_next_round: () => this._vydrzDo(() => this._vydrz?.nextRound(), "vydrz_next_round"),
       draw_cards: () => this._draw(),
       play_card: () => this._play(payload.card_uid, payload.target_id),
       discard_card: () => this._discardFromHand(payload.card_uid),
@@ -117,6 +123,8 @@ export class MockSocket {
   _emitRoomState() {
     bus.emit("server:room_state", {
       room_id: "DEMO", host_player_id: ME, game_phase: this._phase, max_players: 7,
+      mode: this._mode,
+      modes: [{ id: "rezba", name: "Řežba", playable: false }, { id: "vydrz", name: "Výdrž", playable: true }],
       players: this._players.map(p => ({ player_id: p.player_id, display_name: p.display_name, connected: p.connected })),
     });
   }
@@ -133,6 +141,30 @@ export class MockSocket {
     bus.emit("server:game_event", { event_type: "game_started", data: { player_ids: this._players.map(p => p.player_id), mode: "demo" } });
     this._snapshot();
     this._announceTurn();
+  }
+
+  // --- Výdrž (see mock-vydrz.js) ---
+
+  _startVydrz() {
+    if (this._vydrz || this._players.length < 2) return;
+    this._phase = "playing";
+    this._vydrz = new MockVydrz(
+      this._players.map(p => ({ id: p.player_id, name: p.display_name })),
+      () => this._emitVydrz(),
+    );
+    bus.emit("server:action_ack", { action: "start_game" });
+    this._emitRoomState();
+    this._emitVydrz();
+  }
+
+  _vydrzDo(fn, action) {
+    const err = fn();
+    if (err) { this._fail(err); return; }
+    bus.emit("server:action_ack", { action });
+  }
+
+  _emitVydrz() {
+    if (this._vydrz) bus.emit("server:vydrz_state", this._vydrz.snapshot(ME));
   }
 
   _announceTurn() {

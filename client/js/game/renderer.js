@@ -161,6 +161,8 @@ export class Renderer {
       `).join("");
     }
 
+    this._renderModeSwitch();
+
     // Show/hide start button for host.
     if (el.startGameBtn) {
       const isHost = myPlayerId === lobby.hostPlayerId;
@@ -308,6 +310,20 @@ export class Renderer {
         }
       }
     }
+  }
+
+  /** Segmented control for the game mode; only the host can change it. */
+  _renderModeSwitch() {
+    const box = document.getElementById("mode-switch");
+    if (!box) return;
+    const { lobby, myPlayerId } = this._store.state;
+    const isHost = myPlayerId === lobby.hostPlayerId;
+    box.innerHTML = (lobby.modes ?? []).map(m => {
+      const on = m.id === lobby.mode;
+      const disabled = !m.playable || !isHost;
+      return `<button class="seg__btn${on ? " is-on" : ""}" type="button" role="radio" aria-checked="${on}"
+                data-mode="${_esc(m.id)}" ${disabled ? "disabled" : ""}>${_esc(m.name)}${m.playable ? "" : " <small>(brzy)</small>"}</button>`;
+    }).join("");
   }
 
   renderOpponentHandCount(playerId) {

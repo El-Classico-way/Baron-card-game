@@ -12,6 +12,7 @@
 
   <!-- Relative URLs so the client works from any path or static host. -->
   <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/vydrz.css" />
 </head>
 <body>
 
@@ -77,9 +78,15 @@
 
       <ul id="lobby-player-list" class="lobby-player-list"></ul>
 
+      <div class="mode-pick">
+        <span class="mode-pick__label">Režim hry</span>
+        <div id="mode-switch" class="seg" role="radiogroup" aria-label="Režim hry"></div>
+      </div>
+
       <div class="lobby-actions">
         <button id="start-game-btn" class="btn btn--block" hidden disabled>Start game</button>
         <p class="lobby-hint" id="lobby-hint">Share the invite link with friends to let them join.</p>
+        <button id="lobby-settings-btn" class="btn btn--ghost btn--small" type="button">⚙ Nastavení</button>
         <button id="leave-btn" class="btn btn--ghost btn--small" type="button">Leave room</button>
       </div>
     </div>
@@ -143,6 +150,31 @@
       </div>
     </aside>
   </div>
+
+  <!-- ================================================================
+       VÝDRŽ TABLE (mode "vydrz"). Rendered by js/vydrz/view.js.
+       ================================================================ -->
+  <div id="vydrz-panel" hidden>
+    <header class="vy-hud">
+      <div id="vy-round" class="vy-hud__title">Kolo</div>
+      <button id="vy-settings-btn" class="hud__btn" type="button" aria-label="Nastavení">⚙</button>
+      <button id="vy-leave-btn" class="hud__btn hud__btn--danger" type="button" aria-label="Opustit hru">✕</button>
+    </header>
+    <div class="vy-scroll">
+      <section id="vy-players" class="vy-players" aria-label="Hráči"></section>
+      <section class="vy-table" aria-label="Stůl">
+        <div id="vy-piles" class="vy-piles"></div>
+        <div id="vy-drawn" class="vy-drawn"></div>
+      </section>
+      <section id="vy-me" class="vy-me" aria-label="Tvoje postava"></section>
+      <section class="vy-hand-sec"><h3>Lokace</h3><div id="vy-locations" class="vy-hand"></div></section>
+      <section class="vy-hand-sec"><h3>Existence</h3><div id="vy-existences" class="vy-hand"></div></section>
+    </div>
+    <div id="vy-bar" class="vy-bar"></div>
+  </div>
+  <div id="vy-sheet" class="vs" hidden role="dialog" aria-modal="true" aria-label="Karty hráče"></div>
+  <div id="vy-settings" class="vs" hidden role="dialog" aria-modal="true" aria-label="Nastavení"></div>
+  <div id="vy-result" class="vr" hidden role="dialog" aria-modal="true"></div>
 
   <div id="card-inspector" class="inspector" role="dialog" aria-modal="true" aria-label="Card details" hidden></div>
 

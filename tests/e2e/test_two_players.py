@@ -27,6 +27,11 @@ def test_two_players_play_a_turn(browser, base_url):
     assert room_id and room_id != "—"
     _join(bob, base_url, "Bob", room_id)
 
+    # This test drives the older action-game prototype, which the UI no longer
+    # offers (Řežba is disabled), so select it through the dev hook.
+    alice.evaluate("window.__app.socket.send('set_mode', { mode: 'rezba' })")
+    expect(bob.locator("#mode-switch .is-on")).to_contain_text("Řežba")
+
     # Only the host sees an enabled Start button.
     expect(alice.locator("#start-game-btn")).to_be_enabled()
     expect(bob.locator("#start-game-btn")).to_be_hidden()

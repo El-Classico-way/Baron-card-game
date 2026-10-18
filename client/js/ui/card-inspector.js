@@ -60,6 +60,17 @@ export class CardInspector {
     this._show();
   }
 
+  /**
+   * Show arbitrary cards (used by game modes with their own card kinds).
+   * @param {{ html: string, name: string, meta?: string, desc?: string }[]} items
+   * @param {number} index
+   */
+  openCustom(items, index = 0) {
+    if (!items.length) return;
+    this._source = { kind: "custom", items, index };
+    this._show();
+  }
+
   openDiscardTop() {
     if (!this._store.state.game?.deck?.topDiscard) return;
     this._source = { kind: "discard" };
@@ -106,7 +117,31 @@ export class CardInspector {
     return this._store.myPlayer?.hand ?? [];
   }
 
+  _renderCustom() {
+    const { items, index } = this._source;
+    const item = items[index];
+    this._root.innerHTML = `
+      <div class="inspector__backdrop" data-close></div>
+      <div class="inspector__sheet inspector__sheet--custom" role="document">
+        <button class="inspector__close" type="button" data-close aria-label="Zavřít">✕</button>
+        <div class="inspector__card inspector__card--custom">${item.html}</div>
+        <div class="inspector__text">
+          <h2 class="inspector__name" id="inspector-title">${_esc(item.name)}</h2>
+          ${item.meta ? `<p class="inspector__meta">${_esc(item.meta)}</p>` : ""}
+          ${item.desc ? `<p class="inspector__desc">${_esc(item.desc)}</p>` : ""}
+        </div>
+        ${items.length > 1 ? `
+          <div class="inspector__nav">
+            <button class="btn btn--ghost btn--small" type="button" data-nav="-1" aria-label="Předchozí karta">‹ Zpět</button>
+            <span class="inspector__count">${index + 1} / ${items.length}</span>
+            <button class="btn btn--ghost btn--small" type="button" data-nav="1" aria-label="Další karta">Další ›</button>
+          </div>` : ""}
+      </div>`;
+    this._root.setAttribute("aria-labelledby", "inspector-title");
+  }
+
   _render() {
+    if (this._source?.kind === "custom") { this._renderCustom(); return; }
     const card = this._currentCard();
     if (!card) { this.close(); return; }
 
@@ -140,6 +175,13 @@ export class CardInspector {
   }
 
   _step(delta) {
+    if (this._source?.kind === "custom") {
+      const n = this._source.items.length;
+      this._source.index = (this._source.index + delta + n) % n;
+      this._render();
+      this._root.querySelector(`[data-nav="${delta}"]`)?.focus({ preventScroll: true });
+      return;
+    }
     if (this._source?.kind !== "hand") return;
     const hand = this._hand();
     if (hand.length < 2) return;

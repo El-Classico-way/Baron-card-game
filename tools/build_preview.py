@@ -31,7 +31,7 @@ def main() -> None:
          "--bundle", "--format=iife", "--minify", "--target=es2020"],
         check=True, capture_output=True, text=True,
     ).stdout
-    css = (CLIENT / "css" / "main.css").read_text()
+    css = "\n".join((CLIENT / "css" / f).read_text() for f in ("main.css", "vydrz.css"))
     html = (CLIENT / "index.html").read_text()
 
     body = re.search(r"<body>(.*)</body>", html, re.S).group(1)
