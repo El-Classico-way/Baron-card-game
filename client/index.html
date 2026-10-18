@@ -126,6 +126,7 @@
     <div id="action-bar" class="action-bar--inactive">
       <button class="btn" data-action="draw" aria-label="Draw cards" hidden>Draw</button>
       <button class="btn" data-action="end-turn" aria-label="End your turn" hidden>End turn</button>
+      <button class="btn btn--ghost btn--small" data-action="inspect" aria-label="Inspect selected card" hidden>🔍 Inspect</button>
       <button class="btn btn--ghost btn--small" data-action="request-sync" aria-label="Re-sync from server">↻</button>
     </div>
 
@@ -142,6 +143,8 @@
       </div>
     </aside>
   </div>
+
+  <div id="card-inspector" class="inspector" role="dialog" aria-modal="true" aria-label="Card details" hidden></div>
 
   <div id="game-overlay" hidden aria-modal="true" role="dialog" aria-label="Game over"></div>
   <div id="reaction-overlay" hidden aria-modal="true" role="dialog" aria-label="React to incoming attack"></div>

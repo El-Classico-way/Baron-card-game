@@ -40,7 +40,10 @@ function makeCard() {
   return {
     uid: `mock-${n}`, id: "placeholder", name: `Card ${n}`,
     suit: _pick(SUITS), rank: _pick(RANKS),
-    description: "Placeholder card. Real card text will come from the server.",
+    // Every third card gets long text so wrapping in the inspector can be judged.
+    description: n % 3 === 0
+      ? "Placeholder text standing in for a card's rules. The real text comes from the server and may run to several lines, so the inspector wraps it comfortably even on a small screen."
+      : "Placeholder card. Real card text will come from the server.",
     has_art: false,
   };
 }

@@ -45,6 +45,8 @@ const SUIT_COLORS = {
   clubs:    "black",
 };
 
+export const SUIT_LABELS = { spades: "Spades", hearts: "Hearts", diamonds: "Diamonds", clubs: "Clubs" };
+
 export const CardView = {
 
   /**
@@ -89,6 +91,36 @@ export const CardView = {
         </div>
         ${isSelected ? '<div class="card__selected-indicator" aria-hidden="true">▶</div>' : ""}
         ${card.description ? `<div class="card__tooltip">${_esc(card.description)}</div>` : ""}
+      </div>
+    `;
+  },
+
+  /**
+   * Build a large, non-interactive card face for the card inspector.
+   * Same markup and styling as a hand card, just scaled by CSS; the
+   * description is shown by the inspector next to it, not on the card.
+   *
+   * @param {{ id, name, suit, rank, has_art? }} card
+   * @returns {string} HTML
+   */
+  buildInspectCardHTML(card) {
+    const symbol = SUIT_SYMBOLS[card.suit] ?? "?";
+    const color  = SUIT_COLORS[card.suit]  ?? "black";
+    return `
+      <div class="inspect-card inspect-card--suit-${_attr(card.suit)} inspect-card--color-${color}"
+           ${_artStyle(card)}>
+        <div class="card__corner card__corner--top">
+          <span class="card__rank">${_esc(card.rank)}</span>
+          <span class="card__suit">${symbol}</span>
+        </div>
+        <div class="card__face">
+          <div class="card__art" aria-hidden="true"></div>
+          <div class="card__name">${_esc(card.name)}</div>
+        </div>
+        <div class="card__corner card__corner--bottom" aria-hidden="true">
+          <span class="card__rank">${_esc(card.rank)}</span>
+          <span class="card__suit">${symbol}</span>
+        </div>
       </div>
     `;
   },

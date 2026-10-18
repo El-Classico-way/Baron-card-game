@@ -35,6 +35,7 @@
 
 import { bus }         from "./core/events.js";
 import { SocketClient } from "./core/socket.js";
+import { CardInspector } from "./ui/card-inspector.js";
 import { MockSocket }   from "./mock/mock-socket.js";
 import { Store }        from "./core/store.js";
 import { Renderer }     from "./game/renderer.js";
@@ -80,6 +81,9 @@ function boot() {
 
   // 7. Animator
   const animator = new Animator(store);
+
+  // Card inspector (enlarged card view); see js/ui/card-inspector.js.
+  new CardInspector(store, elements);
 
   // 8. Wire join / lobby forms
   _wireJoinForm(elements, socket);

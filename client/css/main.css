@@ -350,7 +350,7 @@ body.is-targeting .opponent[data-player-id]:not(.opponent--dead) {
 .discard-pile--empty::after { content: "discard"; position: absolute; inset: 0; display: grid; place-items: center; font-size: .7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: .1em; }
 
 /* Cards (hand + discard share the face) -------------------- */
-.hand-card, .discard-card {
+.hand-card, .discard-card, .inspect-card {
   position: relative;
   width: var(--card-w); height: var(--card-h);
   flex: none;
@@ -365,7 +365,7 @@ body.is-targeting .opponent[data-player-id]:not(.opponent--dead) {
   transition: transform .18s var(--anim-easing), box-shadow .18s, opacity .18s;
 }
 .discard-card { width: 100%; height: 100%; }
-.hand-card--color-red, .discard-card--color-red { color: var(--red); }
+.hand-card--color-red, .discard-card--color-red, .inspect-card--color-red { color: var(--red); }
 
 .card__corner {
   position: absolute; display: flex; flex-direction: column; align-items: center; line-height: 1;
@@ -382,10 +382,10 @@ body.is-targeting .opponent[data-player-id]:not(.opponent--dead) {
 }
 /* No art yet: show a big suit pip so the card never looks empty */
 .card__art::after { font-size: calc(var(--card-w) * .55); opacity: .18; line-height: 1; }
-.hand-card--suit-spades   .card__art::after, .discard-card--suit-spades   .card__art::after { content: "♠"; }
-.hand-card--suit-hearts   .card__art::after, .discard-card--suit-hearts   .card__art::after { content: "♥"; }
-.hand-card--suit-diamonds .card__art::after, .discard-card--suit-diamonds .card__art::after { content: "♦"; }
-.hand-card--suit-clubs    .card__art::after, .discard-card--suit-clubs    .card__art::after { content: "♣"; }
+.hand-card--suit-spades   .card__art::after, .discard-card--suit-spades   .card__art::after, .inspect-card--suit-spades .card__art::after { content: "♠"; }
+.hand-card--suit-hearts   .card__art::after, .discard-card--suit-hearts   .card__art::after, .inspect-card--suit-hearts .card__art::after { content: "♥"; }
+.hand-card--suit-diamonds .card__art::after, .discard-card--suit-diamonds .card__art::after, .inspect-card--suit-diamonds .card__art::after { content: "♦"; }
+.hand-card--suit-clubs    .card__art::after, .discard-card--suit-clubs    .card__art::after, .inspect-card--suit-clubs .card__art::after { content: "♣"; }
 .card__name {
   font-family: var(--font-display); font-weight: 700; text-align: center; word-break: normal; overflow-wrap: break-word; hyphens: auto;
   font-size: clamp(.66rem, calc(var(--card-w) * .125), .85rem); line-height: 1.1;
@@ -481,6 +481,36 @@ body.is-targeting .opponent[data-player-id]:not(.opponent--dead) {
 .chat-message__text { color: rgba(246,239,220,.9); }
 #chat-form { display: flex; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--line); }
 #chat-input { flex: 1; min-height: 44px; border: 0; border-radius: 10px; padding: 0 12px; font-size: 16px; background: #fff; }
+
+/* Card inspector -------------------------------------------- */
+
+.inspector { position: fixed; inset: 0; z-index: 250; display: flex; align-items: center; justify-content: center; padding: calc(var(--safe-t) + 12px) calc(var(--safe-r) + 12px) calc(var(--safe-b) + 12px) calc(var(--safe-l) + 12px); }
+.inspector__backdrop { position: absolute; inset: 0; background: rgba(4, 12, 8, .82); backdrop-filter: blur(3px); }
+.inspector__sheet {
+  position: relative; width: 100%; max-width: 420px; max-height: 100%;
+  overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  padding: 20px 16px 16px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  animation: inspect-in var(--anim-duration-fast) var(--anim-easing);
+}
+@keyframes inspect-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+.inspector__close { position: absolute; top: 8px; right: 8px; z-index: 1; min-width: 44px; min-height: 44px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); font-size: 1.1rem; }
+.inspector__card { --card-w: min(56vw, 230px, 34dvh); flex: none; padding-top: 6px; }
+.inspect-card { box-shadow: 0 10px 30px rgba(0,0,0,.55); }
+.inspect-card .card__corner--bottom { display: flex; }
+.inspect-card .card__name { font-size: calc(var(--card-w) * .12); padding: 0 10px; }
+.inspect-card .card__corner { font-size: calc(var(--card-w) * .16); }
+.inspector__text { width: 100%; text-align: center; display: flex; flex-direction: column; gap: 6px; -webkit-user-select: text; user-select: text; }
+.inspector__where { font-size: .75rem; text-transform: uppercase; letter-spacing: .12em; color: var(--text-dim); }
+.inspector__name { font-family: var(--font-display); font-size: 1.5rem; color: var(--gold-light); line-height: 1.15; overflow-wrap: break-word; }
+.inspector__meta { color: var(--text-dim); font-size: .95rem; }
+.inspector__desc { font-size: 1.1rem; line-height: 1.45; color: var(--text); text-wrap: pretty; overflow-wrap: break-word; }
+.inspector__desc--none { color: var(--text-dim); font-style: italic; }
+.inspector__nav { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+.inspector__nav .btn { flex: 1; }
+.inspector__count { flex: none; color: var(--text-dim); font-variant-numeric: tabular-nums; min-width: 4.5ch; text-align: center; }
 
 /* 6. OVERLAYS, TOASTS, BANNERS -------------------------------- */
 
@@ -646,6 +676,10 @@ body.is-targeting .opponent[data-player-id]:not(.opponent--dead) {
   #join-panel, #lobby-panel { padding-top: 40px; }
   .screen-inner { justify-content: flex-start; }
   .sidebar { height: 80dvh; }
+  .inspector__sheet { max-width: 720px; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 20px; padding: 16px 56px 12px 16px; }
+  .inspector__card { --card-w: min(30vw, 190px, 52dvh); grid-row: 1 / span 2; padding: 0; }
+  .inspector__text { text-align: left; }
+  .inspector__nav { grid-column: 2; }
 }
 
 @media (prefers-reduced-motion: reduce) {

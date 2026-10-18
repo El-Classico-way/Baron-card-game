@@ -140,3 +140,121 @@ def test_bots_take_their_turn_and_it_returns_to_me(page, base_url):
     page.click('[data-action="end-turn"]')
     expect(page.locator("#turn-indicator")).not_to_contain_text("Your turn")
     expect(page.locator('[data-action="draw"]')).to_be_visible(timeout=12000)
+
+
+# ---------------------------------------------------------------------------
+# Card inspector (enlarged card view)
+# ---------------------------------------------------------------------------
+
+def _table(page, base_url, bots=2):
+    page.goto(f"{base_url}?mock=table&bots={bots}")
+    expect(page.locator("#game-panel")).to_be_visible(timeout=8000)
+
+
+def _long_press(page, locator):
+    box = locator.bounding_box()
+    page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+    page.mouse.down()
+    page.wait_for_timeout(650)
+    page.mouse.up()
+
+
+def test_inspect_when_not_playing_a_tap_opens_it(page, base_url):
+    _table(page, base_url)       # draw phase: a tap has no game meaning
+    page.locator("#hand-area .hand-card").first.click()
+    expect(page.locator("#card-inspector")).to_be_visible()
+    expect(page.locator(".inspector__name")).to_have_text("Card 1")
+    expect(page.locator(".inspector__desc")).not_to_be_empty()
+
+
+def test_inspect_is_readable_and_fits_the_screen(page, base_url):
+    _table(page, base_url)
+    page.locator("#hand-area .hand-card").nth(2).click()      # "Card 3": the long text
+    sheet = page.locator(".inspector__sheet")
+    expect(sheet).to_be_visible()
+    vp = page.viewport_size
+    box = sheet.bounding_box()
+    assert box["x"] >= 0 and box["x"] + box["width"] <= vp["width"] + 1
+    assert box["y"] >= 0 and box["y"] + box["height"] <= vp["height"] + 1
+    big = page.locator(".inspect-card").bounding_box()
+    small = page.locator("#hand-area .hand-card").first.bounding_box()
+    assert big["width"] >= small["width"] * 1.5, (big, small)
+    # Text is big enough to read.
+    assert page.evaluate("parseFloat(getComputedStyle(document.querySelector('.inspector__desc')).fontSize)") >= 16
+    # Not scrollable sideways.
+    assert page.evaluate("document.querySelector('.inspector__sheet').scrollWidth - document.querySelector('.inspector__sheet').clientWidth") <= 1
+    _no_horizontal_scroll(page)
+
+
+def test_long_press_inspects_without_selecting_on_my_turn(page, base_url):
+    _table(page, base_url)
+    page.click('[data-action="draw"]')
+    expect(page.locator("#hand-area .hand-card")).to_have_count(6)
+    _long_press(page, page.locator("#hand-area .hand-card").nth(1))
+    expect(page.locator("#card-inspector")).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(page.locator("#card-inspector")).to_be_hidden()
+    expect(page.locator("#hand-area .hand-card--selected")).to_have_count(0)
+
+
+def test_right_click_inspects(page, base_url):
+    _table(page, base_url)
+    page.click('[data-action="draw"]')
+    page.locator("#hand-area .hand-card").nth(1).click(button="right")
+    expect(page.locator("#card-inspector")).to_be_visible()
+
+
+def test_inspect_button_for_selected_card_then_navigate_and_close(page, base_url):
+    _table(page, base_url)
+    page.click('[data-action="draw"]')
+    inspect_btn = page.locator('[data-action="inspect"]')
+    expect(inspect_btn).to_be_hidden()
+    page.locator("#hand-area .hand-card").nth(1).click()
+    expect(page.locator("#hand-area .hand-card--selected")).to_have_count(1)
+    expect(inspect_btn).to_be_visible()
+    assert inspect_btn.bounding_box()["height"] >= 40
+    inspect_btn.click()
+    name = page.locator(".inspector__name")
+    expect(name).to_have_text("Card 2")
+    page.click('[data-nav="1"]')
+    expect(name).to_have_text("Card 3")
+    expect(page.locator(".inspector__count")).to_have_text("3 / 6")
+    page.click('[data-nav="-1"]')
+    page.click('[data-nav="-1"]')
+    expect(name).to_have_text("Card 1")
+    # Close with the close button; the selection survives.
+    page.click(".inspector__close")
+    expect(page.locator("#card-inspector")).to_be_hidden()
+    expect(page.locator("#hand-area .hand-card--selected")).to_have_count(1)
+    # Backdrop tap also closes.
+    page.locator('[data-action="inspect"]').click()
+    page.mouse.click(2, page.viewport_size["height"] - 2)
+    expect(page.locator("#card-inspector")).to_be_hidden()
+
+
+def test_inspector_never_sends_actions(page, base_url):
+    """Looking at a card is local: hand and pile counts do not change."""
+    _table(page, base_url)
+    page.click('[data-action="draw"]')
+    expect(page.locator("#hand-area .hand-card")).to_have_count(6)
+    before = page.locator("#discard-count").inner_text()
+    page.locator("#hand-area .hand-card").first.click(button="right")
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(300)
+    assert page.locator("#hand-area .hand-card").count() == 6
+    assert page.locator("#discard-count").inner_text() == before
+
+
+def test_discard_pile_top_can_be_inspected(page, base_url):
+    _table(page, base_url)
+    page.click('[data-action="draw"]')
+    page.locator("#hand-area .hand-card").first.click()
+    page.locator(".opponent").first.click()
+    expect(page.locator("#discard-top .discard-card")).to_be_visible()
+    page.locator("#discard-top").click()
+    expect(page.locator("#card-inspector")).to_be_visible()
+    expect(page.locator(".inspector__where")).to_contain_text("discard")
+    expect(page.locator(".inspector__nav")).to_have_count(0)
+    page.keyboard.press("Escape")
+    expect(page.locator("#card-inspector")).to_be_hidden()
+    assert not page.js_errors
