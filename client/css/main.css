@@ -1,0 +1,1095 @@
+/* ============================================================
+   client/css/main.css
+   Saloon-gothic card game theme — mobile-first, no framework
+   ============================================================ */
+
+/* ----------------------------------------------------------
+   1. CUSTOM PROPERTIES
+   ---------------------------------------------------------- */
+
+:root {
+  /* Palette */
+  --color-table:        #1a4a2e;   /* deep baize green */
+  --color-table-edge:   #0f2e1c;
+  --color-felt:         #1e5535;
+  --color-felt-dark:    #163d26;
+  --color-card-bg:      #fdf6e3;
+  --color-card-border:  #c8a96e;
+  --color-gold:         #d4a843;
+  --color-gold-light:   #f0c96e;
+  --color-ink:          #1a1208;
+  --color-red:          #c0392b;
+  --color-black:        #1a1208;
+  --color-hp-full:      #2ecc71;
+  --color-hp-mid:       #f39c12;
+  --color-hp-low:       #e74c3c;
+  --color-shadow:       rgba(0, 0, 0, 0.5);
+
+  /* Feedback */
+  --color-info:         #3498db;
+  --color-success:      #2ecc71;
+  --color-warn:         #f39c12;
+  --color-error:        #e74c3c;
+
+  /* Typography */
+  --font-display:       "Georgia", "Times New Roman", serif;
+  --font-body:          "Segoe UI", system-ui, sans-serif;
+  --font-mono:          "Courier New", monospace;
+
+  /* Spacing */
+  --space-xs:   4px;
+  --space-sm:   8px;
+  --space-md:   16px;
+  --space-lg:   24px;
+  --space-xl:   40px;
+
+  /* Card dimensions */
+  --card-w:      72px;
+  --card-h:     100px;
+  --card-radius:  8px;
+
+  /* Animation */
+  --anim-duration-fast:   200ms;
+  --anim-duration-medium: 400ms;
+  --anim-duration-slow:   700ms;
+  --anim-easing:          cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ----------------------------------------------------------
+   2. RESET
+   ---------------------------------------------------------- */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  height: 100%;
+  font-size: 16px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+body {
+  height: 100%;
+  background: var(--color-table);
+  color: var(--color-card-bg);
+  font-family: var(--font-body);
+  overflow: hidden;           /* prevent scroll on game table */
+  user-select: none;
+}
+
+[hidden] { display: none !important; }
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+}
+
+input {
+  font: inherit;
+  color: var(--color-ink);
+}
+
+/* ----------------------------------------------------------
+   3. UTILITY CLASSES
+   ---------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: 6px;
+  background: var(--color-gold);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-weight: bold;
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+  border: 2px solid var(--color-gold-light);
+  transition: filter var(--anim-duration-fast);
+}
+
+.btn:hover:not(:disabled) { filter: brightness(1.15); }
+.btn:active:not(:disabled) { filter: brightness(0.9); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn--danger {
+  background: var(--color-error);
+  border-color: #ff6b6b;
+  color: #fff;
+}
+
+/* ----------------------------------------------------------
+   4. JOIN PANEL
+   ---------------------------------------------------------- */
+
+#join-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--space-md);
+}
+
+.join-card {
+  background: var(--color-card-bg);
+  color: var(--color-ink);
+  border-radius: 12px;
+  padding: var(--space-xl);
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px var(--color-shadow);
+  text-align: center;
+}
+
+.join-card__title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  color: var(--color-table-edge);
+  margin-bottom: var(--space-xs);
+}
+
+.join-card__subtitle {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: var(--space-lg);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+  text-align: left;
+}
+
+.form-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.form-group input {
+  padding: var(--space-sm) var(--space-md);
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color var(--anim-duration-fast);
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--color-table);
+}
+
+.form-error {
+  color: var(--color-error);
+  font-size: 0.85rem;
+  margin-top: var(--space-xs);
+}
+
+/* ----------------------------------------------------------
+   5. LOBBY PANEL
+   ---------------------------------------------------------- */
+
+#lobby-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-lg);
+  height: 100%;
+  gap: var(--space-md);
+}
+
+.lobby-title {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  color: var(--color-gold);
+}
+
+.lobby-room-id {
+  font-family: var(--font-mono);
+  background: rgba(0,0,0,0.3);
+  padding: var(--space-xs) var(--space-md);
+  border-radius: 4px;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+}
+
+.lobby-player-list {
+  list-style: none;
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.lobby-player {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background: rgba(255,255,255,0.1);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.lobby-player.disconnected {
+  opacity: 0.5;
+}
+
+.lobby-player__name { flex: 1; }
+
+.lobby-player__badge {
+  font-size: 0.7rem;
+  background: var(--color-gold);
+  color: var(--color-ink);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.lobby-player__badge--you {
+  background: var(--color-info);
+  color: #fff;
+}
+
+/* ----------------------------------------------------------
+   6. GAME PANEL LAYOUT
+   ---------------------------------------------------------- */
+
+#game-panel {
+  display: grid;
+  height: 100%;
+  grid-template-rows: auto 1fr auto auto;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "hud        hud"
+    "opponents  sidebar"
+    "my-area    sidebar"
+    "action-bar sidebar";
+  gap: var(--space-xs);
+  padding: var(--space-xs);
+  overflow: hidden;
+}
+
+/* ----------------------------------------------------------
+   7. HUD BAR
+   ---------------------------------------------------------- */
+
+.hud {
+  grid-area: hud;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  background: rgba(0,0,0,0.35);
+  border-radius: 8px;
+  padding: var(--space-xs) var(--space-md);
+  font-size: 0.85rem;
+}
+
+#turn-indicator {
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--color-card-bg);
+  text-align: center;
+  transition: color var(--anim-duration-fast);
+}
+
+#turn-indicator.turn-indicator--mine {
+  color: var(--color-gold);
+  font-weight: bold;
+}
+
+.hud__deck {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.7);
+}
+
+/* ----------------------------------------------------------
+   8. OPPONENTS AREA
+   ---------------------------------------------------------- */
+
+#opponents-area {
+  grid-area: opponents;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-content: flex-start;
+  overflow-y: auto;
+  padding: var(--space-xs);
+}
+
+.opponent {
+  position: relative;
+  background: rgba(0,0,0,0.3);
+  border: 2px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: var(--space-sm);
+  min-width: 120px;
+  max-width: 160px;
+  cursor: pointer;
+  transition:
+    border-color var(--anim-duration-fast),
+    transform var(--anim-duration-fast);
+  flex: 1 1 120px;
+}
+
+.opponent:hover { border-color: var(--color-gold); }
+
+.opponent--active {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 12px rgba(212, 168, 67, 0.5);
+}
+
+.opponent--dead {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+.opponent__name {
+  font-size: 0.8rem;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: var(--space-xs);
+}
+
+.opponent__role {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: var(--space-xs);
+}
+
+.opponent__role--sheriff  { color: #f1c40f; }
+.opponent__role--deputy   { color: #3498db; }
+.opponent__role--outlaw   { color: var(--color-error); }
+.opponent__role--renegade { color: #9b59b6; }
+
+.opponent__hp-bar {
+  height: 6px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: var(--space-xs);
+}
+
+.opponent__hp-fill {
+  height: 100%;
+  background: var(--color-hp-full);
+  border-radius: 3px;
+  transition: width 0.3s var(--anim-easing), background 0.3s;
+}
+
+/* HP color changes based on percentage via inline style in renderer */
+.opponent__hp-label {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.6);
+}
+
+.opponent__hand-count {
+  font-size: 0.75rem;
+  margin-top: var(--space-xs);
+  letter-spacing: -0.05em;
+}
+
+.opponent__equipment {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: var(--space-xs);
+}
+
+.opponent__dead-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+}
+
+/* ----------------------------------------------------------
+   9. LOCAL PLAYER AREA
+   ---------------------------------------------------------- */
+
+#my-player-area {
+  grid-area: my-area;
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+  background: rgba(0,0,0,0.2);
+  border-radius: 10px;
+  padding: var(--space-sm) var(--space-md);
+}
+
+.my-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 80px;
+}
+
+.my-stats__name {
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: var(--color-gold);
+}
+
+.my-hp-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+#my-hp-bar {
+  height: 8px;
+  width: 80px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+#my-hp-bar-fill {
+  height: 100%;
+  width: 100%;          /* set by renderer via style.width */
+  background: var(--color-hp-full);
+  border-radius: 4px;
+  transition: width 0.3s var(--anim-easing), background 0.3s;
+}
+
+#my-hp-display {
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  color: rgba(255,255,255,0.7);
+}
+
+/* Hand area */
+#hand-area {
+  flex: 1;
+  display: flex;
+  gap: var(--space-xs);
+  overflow-x: auto;
+  padding: var(--space-xs) 0 var(--space-sm);
+  align-items: flex-end;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-gold) transparent;
+}
+
+#hand-area::-webkit-scrollbar { height: 4px; }
+#hand-area::-webkit-scrollbar-thumb { background: var(--color-gold); border-radius: 2px; }
+
+/* Role panel */
+#role-panel {
+  min-width: 80px;
+}
+
+/* ----------------------------------------------------------
+   10. CARDS
+   ---------------------------------------------------------- */
+
+.hand-card,
+.discard-card {
+  position: relative;
+  width: var(--card-w);
+  min-width: var(--card-w);
+  height: var(--card-h);
+  border-radius: var(--card-radius);
+  background-color: var(--color-card-bg);
+  border: 1.5px solid var(--color-card-border);
+  overflow: hidden;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    transform var(--anim-duration-fast) var(--anim-easing),
+    box-shadow var(--anim-duration-fast);
+}
+
+.hand-card--playable:hover {
+  transform: translateY(-10px) scale(1.05);
+  box-shadow: 0 8px 24px var(--color-shadow);
+  z-index: 10;
+}
+
+.hand-card--selected {
+  transform: translateY(-14px) scale(1.08);
+  box-shadow: 0 0 0 3px var(--color-gold), 0 8px 24px var(--color-shadow);
+  z-index: 20;
+}
+
+.hand-card--inactive {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.card__corner {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  font-size: 0.65rem;
+  font-weight: bold;
+}
+
+.card__corner--top { top: 4px; left: 5px; }
+.card__corner--bottom {
+  bottom: 4px;
+  right: 5px;
+  transform: rotate(180deg);
+}
+
+.card__rank { font-size: 0.75rem; }
+.card__suit { font-size: 0.65rem; }
+
+/* Red suits */
+.hand-card--color-red .card__rank,
+.hand-card--color-red .card__suit,
+.discard-card--color-red .card__rank,
+.discard-card--color-red .card__suit {
+  color: var(--color-red);
+}
+
+.card__face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 4px 4px;
+}
+
+.card__art {
+  width: 100%;
+  flex: 1;
+  background-image: var(--card-art);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.card__name {
+  font-size: 0.6rem;
+  font-family: var(--font-display);
+  text-align: center;
+  color: var(--color-ink);
+  font-weight: bold;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
+.card__selected-indicator {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--color-gold);
+  font-size: 1rem;
+}
+
+.card__tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(var(--card-h) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.9);
+  color: #fff;
+  font-size: 0.7rem;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.hand-card:hover .card__tooltip { display: block; }
+
+/* Face-down card */
+.card--face-down {
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: var(--card-radius);
+  border: 1.5px solid var(--color-card-border);
+}
+
+.card__back {
+  width: 100%;
+  height: 100%;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      #1a4a2e,
+      #1a4a2e 5px,
+      #163d26 5px,
+      #163d26 10px
+    );
+  border-radius: calc(var(--card-radius) - 1px);
+}
+
+/* ----------------------------------------------------------
+   11. DECK AND DISCARD PILE
+   ---------------------------------------------------------- */
+
+.deck-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.deck-pile {
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: var(--card-radius);
+  border: 2px dashed rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.5);
+}
+
+.discard-pile--empty {
+  border: 2px dashed rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.1);
+}
+
+/* ----------------------------------------------------------
+   12. ACTION BAR
+   ---------------------------------------------------------- */
+
+#action-bar {
+  grid-area: action-bar;
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.action-bar--inactive {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ----------------------------------------------------------
+   13. ROLE CARD
+   ---------------------------------------------------------- */
+
+.role-card {
+  border-radius: 8px;
+  padding: var(--space-sm);
+  text-align: center;
+  background: rgba(0,0,0,0.4);
+  border: 2px solid rgba(255,255,255,0.1);
+}
+
+.role-card__label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 2px;
+}
+
+.role-card__name {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: bold;
+  text-transform: capitalize;
+}
+
+.role-card--sheriff  .role-card__name { color: #f1c40f; }
+.role-card--deputy   .role-card__name { color: #3498db; }
+.role-card--outlaw   .role-card__name { color: var(--color-error); }
+.role-card--renegade .role-card__name { color: #9b59b6; }
+
+.role-card__desc {
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.6);
+  margin-top: var(--space-xs);
+  line-height: 1.3;
+}
+
+/* ----------------------------------------------------------
+   14. EQUIPMENT BADGES
+   ---------------------------------------------------------- */
+
+.equipment-badge {
+  display: inline-block;
+  font-size: 0.6rem;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.2);
+  white-space: nowrap;
+  color: rgba(255,255,255,0.8);
+}
+
+/* ----------------------------------------------------------
+   15. SIDEBAR (chat + deck info)
+   ---------------------------------------------------------- */
+
+.sidebar {
+  grid-area: sidebar;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  width: 180px;
+  overflow: hidden;
+}
+
+.chat-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+#chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.75rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
+}
+
+.chat-message__name {
+  font-weight: bold;
+  color: var(--color-gold);
+  margin-right: var(--space-xs);
+}
+
+.chat-message__text {
+  color: rgba(255,255,255,0.85);
+}
+
+#chat-form {
+  display: flex;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+#chat-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 0.75rem;
+  color: #fff;
+  outline: none;
+}
+
+#chat-input::placeholder { color: rgba(255,255,255,0.3); }
+
+/* ----------------------------------------------------------
+   16. OVERLAYS
+   ---------------------------------------------------------- */
+
+#game-overlay,
+#reaction-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  backdrop-filter: blur(2px);
+}
+
+.game-over {
+  background: var(--color-card-bg);
+  color: var(--color-ink);
+  border-radius: 16px;
+  padding: var(--space-xl);
+  text-align: center;
+  max-width: 360px;
+  width: 90%;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+}
+
+.game-over__title {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  margin-bottom: var(--space-sm);
+}
+
+.game-over--win  .game-over__title { color: var(--color-gold); }
+.game-over--lose .game-over__title { color: var(--color-error); }
+
+.game-over__winners {
+  font-size: 1.1rem;
+  margin-bottom: var(--space-xs);
+}
+
+.game-over__reason {
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: var(--space-lg);
+}
+
+.reaction-window {
+  background: var(--color-card-bg);
+  color: var(--color-ink);
+  border-radius: 12px;
+  padding: var(--space-lg);
+  text-align: center;
+  max-width: 300px;
+  width: 90%;
+}
+
+.reaction-window__timer {
+  font-size: 2rem;
+  font-family: var(--font-display);
+  color: var(--color-error);
+  font-weight: bold;
+  margin: var(--space-md) 0;
+}
+
+/* ----------------------------------------------------------
+   17. NOTIFICATIONS
+   ---------------------------------------------------------- */
+
+#notification-area {
+  position: fixed;
+  top: var(--space-md);
+  right: var(--space-md);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  pointer-events: none;
+  max-width: 280px;
+}
+
+.notification {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  animation: notif-in var(--anim-duration-fast) var(--anim-easing);
+}
+
+.notification--info    { background: var(--color-info); }
+.notification--success { background: var(--color-success); }
+.notification--warn    { background: var(--color-warn); color: #000; }
+.notification--error   { background: var(--color-error); }
+
+/* ----------------------------------------------------------
+   18. CONNECTION BANNER
+   ---------------------------------------------------------- */
+
+#connection-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  padding: var(--space-sm);
+  font-size: 0.85rem;
+  font-weight: bold;
+  z-index: 400;
+}
+
+.connection-banner--disconnected,
+.connection-banner--reconnecting {
+  background: var(--color-error);
+  color: #fff;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ----------------------------------------------------------
+   19. TARGET PROMPT
+   ---------------------------------------------------------- */
+
+.target-prompt {
+  text-align: center;
+  padding: var(--space-xs) var(--space-md);
+  background: rgba(212, 168, 67, 0.2);
+  border: 1px solid var(--color-gold);
+  border-radius: 6px;
+  color: var(--color-gold);
+  font-size: 0.85rem;
+  font-style: italic;
+  animation: notif-in var(--anim-duration-fast) var(--anim-easing);
+  grid-area: action-bar;   /* occupies same grid cell, displayed above action bar */
+  margin-bottom: var(--space-xs);
+}
+
+/* ----------------------------------------------------------
+   20. ANIMATIONS (keyframes)
+   ---------------------------------------------------------- */
+
+@keyframes notif-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+/* Damage flash */
+@keyframes damage-flash {
+  0%   { background: rgba(231,76,60,0); }
+  30%  { background: rgba(231,76,60,0.5); }
+  100% { background: rgba(231,76,60,0); }
+}
+
+/* Heal pulse */
+@keyframes heal-pulse {
+  0%   { background: rgba(46,204,113,0); }
+  30%  { background: rgba(46,204,113,0.4); }
+  100% { background: rgba(46,204,113,0); }
+}
+
+/* HP bar change */
+@keyframes hp-change {
+  0%   { filter: brightness(1); }
+  50%  { filter: brightness(1.6); }
+  100% { filter: brightness(1); }
+}
+
+/* Card deal */
+@keyframes card-deal {
+  from { opacity: 0; transform: translateY(20px) scale(0.9); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);   }
+}
+
+/* Card arrive on discard */
+@keyframes card-arrive {
+  from { transform: scale(1.3) rotate(-5deg); opacity: 0.5; }
+  to   { transform: scale(1)   rotate(0deg);  opacity: 1; }
+}
+
+/* Turn start glow */
+@keyframes turn-glow {
+  from { box-shadow: 0 0 0 0 rgba(212,168,67,0.7); }
+  to   { box-shadow: 0 0 0 12px rgba(212,168,67,0); }
+}
+
+/* Slide in for players */
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Elimination */
+@keyframes elimination {
+  0%   { filter: grayscale(0)   opacity(1); }
+  60%  { filter: grayscale(0.5) opacity(0.7); transform: scale(1.05); }
+  100% { filter: grayscale(1)   opacity(0.4); }
+}
+
+/* Game start reveal */
+@keyframes game-start {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Animation utility classes (added/removed by animator.js) */
+.anim-damage-flash  { animation: damage-flash  var(--anim-duration-fast)   ease forwards; }
+.anim-heal-pulse    { animation: heal-pulse     var(--anim-duration-fast)   ease forwards; }
+.anim-hp-change     { animation: hp-change      var(--anim-duration-fast)   ease forwards; }
+.anim-card-deal     { animation: card-deal      var(--anim-duration-medium) var(--anim-easing) both; }
+.anim-card-arrive   { animation: card-arrive    var(--anim-duration-fast)   var(--anim-easing) both; }
+.anim-card-played   { animation: card-arrive    var(--anim-duration-fast)   var(--anim-easing) both; }
+.anim-turn-start    { animation: turn-glow      var(--anim-duration-medium) ease forwards; }
+.anim-slide-in      { animation: slide-in       var(--anim-duration-medium) var(--anim-easing) both; }
+.anim-elimination   { animation: elimination    var(--anim-duration-slow)   ease forwards; }
+.anim-game-start    { animation: game-start     var(--anim-duration-medium) var(--anim-easing) both; }
+
+/* ----------------------------------------------------------
+   21. MOBILE RESPONSIVE OVERRIDES
+   ---------------------------------------------------------- */
+
+@media (max-width: 600px) {
+  :root {
+    --card-w:  58px;
+    --card-h:  82px;
+    --card-radius: 6px;
+  }
+
+  #game-panel {
+    grid-template-rows: auto 1fr auto auto;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "hud"
+      "opponents"
+      "my-area"
+      "action-bar";
+  }
+
+  .sidebar { display: none; }   /* collapsed on smallest screens */
+
+  .opponent {
+    min-width: 90px;
+    max-width: 120px;
+    padding: var(--space-xs);
+  }
+
+  .opponent__hand-count { display: none; }  /* save space */
+
+  #hand-area {
+    gap: 2px;
+  }
+
+  .card__tooltip { display: none; }  /* no hover on touch */
+
+  #notification-area {
+    top: auto;
+    bottom: var(--space-md);
+    right: var(--space-sm);
+    left: var(--space-sm);
+    max-width: none;
+  }
+}
+
+@media (min-width: 601px) and (max-width: 900px) {
+  .sidebar { width: 140px; }
+}
+
+/* ----------------------------------------------------------
+   22. ACCESSIBILITY
+   ---------------------------------------------------------- */
+
+:focus-visible {
+  outline: 3px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

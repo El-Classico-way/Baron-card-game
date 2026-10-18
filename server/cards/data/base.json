@@ -1,0 +1,377 @@
+{
+  "pack_id": "base",
+  "pack_name": "Base Game",
+  "version": "1.0.0",
+  "description": "The standard Bang! card set for 2-7 players.",
+  "author": "base",
+  "cards": [
+
+    {
+      "id": "bang",
+      "name": "Bang!",
+      "card_type": "brown",
+      "description": "Deal 1 damage to a player within range 1.",
+      "max_range": 1,
+      "tags": ["attack"],
+      "effects": [
+        { "type": "deal_damage", "params": { "amount": 1 } }
+      ],
+      "copies": [
+        { "suit": "spades",   "rank": "A" },
+        { "suit": "spades",   "rank": "K" },
+        { "suit": "spades",   "rank": "Q" },
+        { "suit": "spades",   "rank": "J" },
+        { "suit": "spades",   "rank": "9" },
+        { "suit": "spades",   "rank": "8" },
+        { "suit": "spades",   "rank": "7" },
+        { "suit": "diamonds", "rank": "A" },
+        { "suit": "diamonds", "rank": "K" },
+        { "suit": "diamonds", "rank": "Q" },
+        { "suit": "diamonds", "rank": "J" },
+        { "suit": "diamonds", "rank": "10" },
+        { "suit": "diamonds", "rank": "9" },
+        { "suit": "diamonds", "rank": "8" },
+        { "suit": "diamonds", "rank": "7" },
+        { "suit": "clubs",    "rank": "A" },
+        { "suit": "clubs",    "rank": "K" },
+        { "suit": "clubs",    "rank": "Q" },
+        { "suit": "clubs",    "rank": "J" },
+        { "suit": "clubs",    "rank": "10" },
+        { "suit": "clubs",    "rank": "9" },
+        { "suit": "clubs",    "rank": "8" },
+        { "suit": "clubs",    "rank": "7" },
+        { "suit": "clubs",    "rank": "6" },
+        { "suit": "clubs",    "rank": "5" },
+        { "suit": "clubs",    "rank": "4" },
+        { "suit": "clubs",    "rank": "3" },
+        { "suit": "clubs",    "rank": "2" }
+      ]
+    },
+
+    {
+      "id": "missed",
+      "name": "Missed!",
+      "card_type": "brown",
+      "description": "Cancel one Bang! played against you. Play as a reaction.",
+      "tags": ["reaction"],
+      "effects": [
+        { "type": "negate_damage", "params": {} }
+      ],
+      "copies": [
+        { "suit": "spades",   "rank": "10" },
+        { "suit": "spades",   "rank": "6" },
+        { "suit": "spades",   "rank": "5" },
+        { "suit": "spades",   "rank": "4" },
+        { "suit": "spades",   "rank": "3" },
+        { "suit": "spades",   "rank": "2" },
+        { "suit": "hearts",   "rank": "K" },
+        { "suit": "hearts",   "rank": "Q" },
+        { "suit": "hearts",   "rank": "J" },
+        { "suit": "hearts",   "rank": "10" },
+        { "suit": "hearts",   "rank": "9" },
+        { "suit": "hearts",   "rank": "8" },
+        { "suit": "hearts",   "rank": "7" },
+        { "suit": "hearts",   "rank": "6" },
+        { "suit": "hearts",   "rank": "5" },
+        { "suit": "hearts",   "rank": "4" },
+        { "suit": "hearts",   "rank": "3" },
+        { "suit": "hearts",   "rank": "2" }
+      ]
+    },
+
+    {
+      "id": "beer",
+      "name": "Beer",
+      "card_type": "brown",
+      "description": "Regain 1 life point. No effect when only 2 players remain.",
+      "tags": ["heal"],
+      "effects": [
+        { "type": "heal", "params": { "amount": 1, "min_players": 2 } }
+      ],
+      "copies": [
+        { "suit": "hearts",   "rank": "A" },
+        { "suit": "hearts",   "rank": "K" },
+        { "suit": "diamonds", "rank": "6" },
+        { "suit": "diamonds", "rank": "5" },
+        { "suit": "diamonds", "rank": "4" },
+        { "suit": "diamonds", "rank": "3" }
+      ]
+    },
+
+    {
+      "id": "stagecoach",
+      "name": "Stagecoach",
+      "card_type": "brown",
+      "description": "Draw 2 extra cards from the deck.",
+      "tags": [],
+      "effects": [
+        { "type": "draw_cards", "params": { "count": 2 } }
+      ],
+      "copies": [
+        { "suit": "spades",   "rank": "J" },
+        { "suit": "spades",   "rank": "J" }
+      ]
+    },
+
+    {
+      "id": "wells_fargo",
+      "name": "Wells Fargo",
+      "card_type": "brown",
+      "description": "Draw 3 extra cards from the deck.",
+      "tags": [],
+      "effects": [
+        { "type": "draw_cards", "params": { "count": 3 } }
+      ],
+      "copies": [
+        { "suit": "hearts",   "rank": "3" }
+      ]
+    },
+
+    {
+      "id": "cat_balou",
+      "name": "Cat Balou",
+      "card_type": "brown",
+      "description": "Force any player to discard a card of your choice (hand or in play).",
+      "tags": ["control"],
+      "effects": [
+        {
+          "type": "force_discard",
+          "params": { "count": 1, "from_hand": true, "from_equip": true }
+        }
+      ],
+      "copies": [
+        { "suit": "hearts",   "rank": "9" },
+        { "suit": "hearts",   "rank": "8" },
+        { "suit": "hearts",   "rank": "7" },
+        { "suit": "diamonds", "rank": "J" }
+      ]
+    },
+
+    {
+      "id": "panic",
+      "name": "Panic!",
+      "card_type": "brown",
+      "description": "Steal a card from a player within range 1 (hand or in play).",
+      "max_range": 1,
+      "tags": ["steal"],
+      "effects": [
+        {
+          "type": "steal_card",
+          "params": { "count": 1, "from_hand": true, "from_equip": true }
+        }
+      ],
+      "copies": [
+        { "suit": "hearts",   "rank": "A" },
+        { "suit": "hearts",   "rank": "J" },
+        { "suit": "hearts",   "rank": "10" },
+        { "suit": "diamonds", "rank": "A" }
+      ]
+    },
+
+    {
+      "id": "gatling",
+      "name": "Gatling",
+      "card_type": "brown",
+      "description": "Deal 1 damage to all other players (each may play a Missed!).",
+      "tags": ["attack", "area"],
+      "effects": [
+        { "type": "deal_damage_all", "params": { "amount": 1 } }
+      ],
+      "copies": [
+        { "suit": "hearts",   "rank": "10" }
+      ]
+    },
+
+    {
+      "id": "indians",
+      "name": "Indians!",
+      "card_type": "brown",
+      "description": "All other players must play a Bang! or lose 1 life point.",
+      "tags": ["attack", "area"],
+      "effects": [
+        { "type": "deal_damage_all", "params": { "amount": 1, "bypass_reaction": false } }
+      ],
+      "copies": [
+        { "suit": "diamonds", "rank": "K" },
+        { "suit": "diamonds", "rank": "A" }
+      ]
+    },
+
+    {
+      "id": "duel",
+      "name": "Duel",
+      "card_type": "brown",
+      "description": "Challenge a player: take turns playing Bang! until someone can't. That player loses 1 life point.",
+      "tags": ["attack", "duel"],
+      "effects": [
+        { "type": "deal_damage", "params": { "amount": 1 } }
+      ],
+      "copies": [
+        { "suit": "spades",   "rank": "Q" },
+        { "suit": "diamonds", "rank": "Q" },
+        { "suit": "clubs",    "rank": "8" }
+      ]
+    },
+
+    {
+      "id": "mustang",
+      "name": "Mustang",
+      "card_type": "blue",
+      "description": "Other players need +1 range to target you.",
+      "tags": ["defense", "horse"],
+      "on_equip": [
+        { "type": "set_range_bonus", "params": { "range_bonus": 1 } }
+      ],
+      "copies": [
+        { "suit": "hearts",   "rank": "8" },
+        { "suit": "hearts",   "rank": "9" }
+      ]
+    },
+
+    {
+      "id": "scope",
+      "name": "Scope",
+      "card_type": "blue",
+      "description": "You see all other players at range -1 (minimum 1).",
+      "tags": ["weapon", "horse"],
+      "on_equip": [
+        { "type": "set_attack_range", "params": { "range_bonus": 1 } }
+      ],
+      "copies": [
+        { "suit": "spades",   "rank": "A" }
+      ]
+    },
+
+    {
+      "id": "volcanic",
+      "name": "Volcanic",
+      "card_type": "blue",
+      "description": "You may play any number of Bang! cards per turn.",
+      "tags": ["weapon"],
+      "on_equip": [
+        { "type": "extra_card_play", "params": { "card_id": "bang", "unlimited": true } }
+      ],
+      "copies": [
+        { "suit": "spades",   "rank": "10" },
+        { "suit": "clubs",    "rank": "10" }
+      ]
+    },
+
+    {
+      "id": "schofield",
+      "name": "Schofield",
+      "card_type": "blue",
+      "description": "You may shoot Bang! at players within range 2.",
+      "max_range": 2,
+      "tags": ["weapon"],
+      "on_equip": [
+        { "type": "set_attack_range", "params": { "range_bonus": 1 } }
+      ],
+      "copies": [
+        { "suit": "spades",   "rank": "K" },
+        { "suit": "spades",   "rank": "Q" },
+        { "suit": "clubs",    "rank": "J" }
+      ]
+    },
+
+    {
+      "id": "remington",
+      "name": "Remington",
+      "card_type": "blue",
+      "description": "You may shoot Bang! at players within range 3.",
+      "max_range": 3,
+      "tags": ["weapon"],
+      "on_equip": [
+        { "type": "set_attack_range", "params": { "range_bonus": 2 } }
+      ],
+      "copies": [
+        { "suit": "clubs",    "rank": "K" }
+      ]
+    },
+
+    {
+      "id": "rev_carabine",
+      "name": "Rev. Carabine",
+      "card_type": "blue",
+      "description": "You may shoot Bang! at players within range 4.",
+      "max_range": 4,
+      "tags": ["weapon"],
+      "on_equip": [
+        { "type": "set_attack_range", "params": { "range_bonus": 3 } }
+      ],
+      "copies": [
+        { "suit": "clubs",    "rank": "A" }
+      ]
+    },
+
+    {
+      "id": "winchester",
+      "name": "Winchester",
+      "card_type": "blue",
+      "description": "You may shoot Bang! at players within range 5.",
+      "max_range": 5,
+      "tags": ["weapon"],
+      "on_equip": [
+        { "type": "set_attack_range", "params": { "range_bonus": 4 } }
+      ],
+      "copies": [
+        { "suit": "spades",   "rank": "8" }
+      ]
+    },
+
+    {
+      "id": "barrel",
+      "name": "Barrel",
+      "card_type": "blue",
+      "description": "Once per turn when targeted by Bang!, flip the top card. A heart = Missed!",
+      "tags": ["defense"],
+      "on_equip": [
+        { "type": "cancel_card", "params": { "trigger": "deal_damage", "flip_suit": "hearts" } }
+      ],
+      "copies": [
+        { "suit": "spades",   "rank": "Q" },
+        { "suit": "spades",   "rank": "K" }
+      ]
+    },
+
+    {
+      "id": "jail",
+      "name": "Jail",
+      "card_type": "blue",
+      "description": "Play on any player except the Sheriff. That player skips their turn unless they flip a heart at the start of their turn.",
+      "tags": ["control"],
+      "effects": [
+        { "type": "skip_draw_phase", "params": { "suit_escape": "hearts" } }
+      ],
+      "copies": [
+        { "suit": "spades",   "rank": "J" },
+        { "suit": "hearts",   "rank": "4" }
+      ]
+    },
+
+    {
+      "id": "dynamite",
+      "name": "Dynamite",
+      "card_type": "blue",
+      "description": "At the start of your turn, flip the top card. On spades 2-9, take 3 damage; otherwise pass it to the next player.",
+      "tags": ["hazard"],
+      "on_equip": [
+        {
+          "type": "deal_damage",
+          "params": {
+            "amount": 3,
+            "bypass_reaction": true,
+            "trigger": "turn_start",
+            "flip_suit": "spades",
+            "flip_rank_min": "2",
+            "flip_rank_max": "9"
+          }
+        }
+      ],
+      "copies": [
+        { "suit": "hearts",   "rank": "2" }
+      ]
+    }
+
+  ]
+}
