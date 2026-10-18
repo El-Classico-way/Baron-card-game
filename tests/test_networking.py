@@ -169,7 +169,7 @@ def test_vydrz_full_round_over_websocket():
             a.send_json({"type": "set_mode", "payload": {"mode": "vydrz"}})
             room_state = _drain_until(a, "room_state")["payload"]
             assert room_state["mode"] == "vydrz"
-            assert {m["id"] for m in room_state["modes"]} == {"rezba", "vydrz"}
+            assert {m["id"] for m in room_state["modes"]} == {"rezba", "vydrz", "vydrz_rucne"}
 
             a.send_json({"type": "start_game", "payload": {}})
             sa, sb = _state(a), _state(b)
@@ -204,3 +204,48 @@ def test_vydrz_full_round_over_websocket():
             a.send_json({"type": "vydrz_next_round", "payload": {}})
             nxt = _state(a, phase="choosing", round_=2)
             assert nxt["phase"] == "choosing" and nxt["round"] == 2
+
+
+def test_manual_vydrz_over_websocket():
+    with TestClient(app) as c:
+        with c.websocket_connect("/ws/roomM?display_name=Alice") as a, \
+             c.websocket_connect("/ws/roomM?display_name=Bob") as b:
+            _drain_until(a, "joined")
+            _drain_until(b, "joined")
+            a.send_json({"type": "set_mode", "payload": {"mode": "vydrz_rucne"}})
+            for _ in range(5):                      # skip the room_state from the joins
+                if _drain_until(a, "room_state")["payload"]["mode"] == "vydrz_rucne":
+                    break
+            else:
+                raise AssertionError("mode never changed")
+            a.send_json({"type": "start_game", "payload": {}})
+            sa, sb = _state(a), _state(b)
+            assert sa["mode"] == "vydrz_rucne" and sa["phase"] == "planning"
+
+            def plan(ws, st):
+                me = next(p for p in st["players"] if p["player_id"] == st["you"])
+                ws.send_json({"type": "vydrz_plan", "payload": {"pairs": [
+                    {"location_uid": l["uid"], "existence_uid": e["uid"]}
+                    for l, e in zip(me["locations"], me["existences"])]}})
+
+            # The automatic message is rejected in the manual mode.
+            a.send_json({"type": "vydrz_choose", "payload": {"location_uid": "x", "existence_uid": "y"}})
+            assert _drain_until(a, "error")["payload"]["code"] == "wrong_mode"
+
+            plan(a, sa)
+            plan(b, sb)
+            sa2 = _state(a, phase="calculating")
+            assert len(sa2["calc"]["drinks"]) == 3 and sa2["calc"]["mine"] is not None
+
+            # Typing a number: the server decides what it means. A huge number is "svindlir"
+            # (counts as 0); two cheaters tie at 0, which starts a manual tie-break.
+            a.send_json({"type": "vydrz_submit", "payload": {"value": 150}})
+            assert _drain_until(a, "action_ack")["payload"]["action"] == "vydrz_submit"
+            a.send_json({"type": "vydrz_submit", "payload": {"value": 5}})
+            assert _drain_until(a, "error")["payload"]["code"] == "action_failed"      # already entered
+            mid = _state(b, phase="calculating")
+            assert any(e["tag"] == "svindlir" for e in mid["calc"]["entries"].values())
+            assert "correct" not in str(mid["calc"]["entries"])
+            b.send_json({"type": "vydrz_submit", "payload": {"value": 150}})
+            tie = _state(a, phase="calculating")
+            assert tie["calc"]["tiebreak"] is True and len(tie["calc"]["drinks"]) == 1

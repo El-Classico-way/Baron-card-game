@@ -31,15 +31,13 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from modes.vydrz.dealing import EXISTENCES_DEALT, deal_hands
 from modes.vydrz.loader import VydrzContent
-from modes.vydrz.models import (
-    LOCATION_NUMBERS, CharacterCard, DrinkCard, ExistenceCard, LocationCard,
-)
+from modes.vydrz.models import CharacterCard, DrinkCard, ExistenceCard, LocationCard
 from modes.vydrz.scoring import contribution, leaders
 
 ROUNDS = 8
 DRINKS_PER_ROUND = 3
-EXISTENCES_DEALT = 8
 MIN_PLAYERS, MAX_PLAYERS = 2, 7
 MAX_TIEBREAK_DRAWS = 30
 
@@ -123,33 +121,17 @@ class VydrzGame:
         return ActionResult.success()
 
     def _deal(self) -> str:
-        c = self.content
-        n = len(self._player_ids)
-        characters = self._shuffled(c.make_characters())
-        if len(characters) < n:
-            return "Málo postav pro tento počet hráčů."
-        by_number: dict[int, list[LocationCard]] = {k: [] for k in LOCATION_NUMBERS}
-        for loc in c.make_locations():
-            by_number[loc.number].append(loc)
-        if any(len(v) < n for v in by_number.values()):
-            return "Málo lokací jednoho z čísel pro tento počet hráčů."
-        existences = self._shuffled(c.make_existences())
-        if len(existences) < n * EXISTENCES_DEALT:
-            return "Málo existencí pro tento počet hráčů."
-
+        deal = deal_hands(self.content, len(self._player_ids), self._shuffled)
+        if isinstance(deal, str):
+            return deal
         self.players = [
-            _Player(pid, self._names.get(pid, pid), characters[i])
+            _Player(pid, self._names.get(pid, pid), deal.characters[i],
+                    locations=deal.locations[i], existences=deal.existences[i])
             for i, pid in enumerate(self._player_ids)
         ]
-        for number in LOCATION_NUMBERS:
-            pile = self._shuffled(by_number[number])
-            for p, card in zip(self.players, pile):
-                p.locations.append(card)
-            self._location_pool_left += len(pile) - n
-        for i, p in enumerate(self.players):
-            p.existences = existences[i * EXISTENCES_DEALT:(i + 1) * EXISTENCES_DEALT]
-        self._existence_pool_left = len(existences) - n * EXISTENCES_DEALT
-        self._drink_deck = self._shuffled(c.make_drinks())
+        self._location_pool_left = deal.locations_left
+        self._existence_pool_left = deal.existences_left
+        self._drink_deck = deal.drink_deck
         return ""
 
     # ---------------------------------------------------------------- actions

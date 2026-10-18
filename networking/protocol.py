@@ -133,6 +133,25 @@ class VydrzChoosePayload(BaseModel):
     model_config = {"extra": "ignore"}
 
 
+class VydrzPlanPair(BaseModel):
+    location_uid: str = Field(..., min_length=1, max_length=64)
+    existence_uid: str = Field(..., min_length=1, max_length=64)
+
+
+class VydrzPlanPayload(BaseModel):
+    """Výdrž (ruční): all pairs in round order."""
+    pairs: list[VydrzPlanPair] = Field(..., min_length=1, max_length=8)
+
+    model_config = {"extra": "ignore"}
+
+
+class VydrzSubmitPayload(BaseModel):
+    """Výdrž (ruční): the number the player counted."""
+    value: int = Field(..., ge=-1000, le=1000)
+
+    model_config = {"extra": "ignore"}
+
+
 class VydrzNextRoundPayload(BaseModel):
     """Host moves on after the round result has been shown."""
     model_config = {"extra": "ignore"}
@@ -183,6 +202,8 @@ INBOUND_PAYLOAD_MODELS: dict[str, type[BaseModel]] = {
     "set_mode":         SetModePayload,
     "vydrz_choose":     VydrzChoosePayload,
     "vydrz_next_round": VydrzNextRoundPayload,
+    "vydrz_plan":       VydrzPlanPayload,
+    "vydrz_submit":     VydrzSubmitPayload,
     "request_snapshot": RequestSnapshotPayload,
     "chat":             ChatPayload,
 }

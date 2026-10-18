@@ -78,7 +78,8 @@ from game.events import (
 from game.game import Game
 from game.state import GameState
 from modes import DEFAULT_MODE, MODES
-from modes.vydrz import Phase as VydrzPhase, VydrzContent, VydrzGame
+from modes.vydrz import VydrzContent, VydrzGame
+from modes.vydrz_manual import ManualVydrzGame
 
 from effects.base import build_default_registry
 
@@ -93,6 +94,8 @@ from networking.protocol import (
     SetModePayload,
     VydrzChoosePayload,
     VydrzNextRoundPayload,
+    VydrzPlanPayload,
+    VydrzSubmitPayload,
     mk_vydrz_state,
     RequestSnapshotPayload,
     ChatPayload,
@@ -168,7 +171,7 @@ class Room:
         self.room_id: str = room_id
         self.mode: str = DEFAULT_MODE
         self._vydrz_content = vydrz_content
-        self._vydrz: VydrzGame | None = None
+        self._vydrz: VydrzGame | ManualVydrzGame | None = None
         # Supplies the deck when the host starts the game.  Injected so the
         # room stays ignorant of card loading (see Room.start_game docs).
         self._deck_factory = deck_factory
@@ -489,7 +492,7 @@ class Room:
         if client.player_id != self._host_player_id:
             await client.send(mk_error("Only the host can start the game.", "not_host"))
             return
-        if self.mode == "vydrz":
+        if self.mode in ("vydrz", "vydrz_rucne"):
             if await self.start_vydrz():
                 await client.send(mk_action_ack("start_game"))
             return
@@ -526,7 +529,8 @@ class Room:
             return False
         ids = list(self._clients.keys())
         names = {pid: c.display_name for pid, c in self._clients.items()}
-        game = VydrzGame(ids, self._vydrz_content, display_names=names)
+        engine = ManualVydrzGame if self.mode == "vydrz_rucne" else VydrzGame
+        game = engine(ids, self._vydrz_content, display_names=names)
         result = game.start()
         if not result.ok:
             await self._broadcast(mk_error(result.error, "start_failed"))
@@ -543,18 +547,44 @@ class Room:
         for pid, client in self._clients.items():
             if client.is_connected:
                 await client.send(mk_vydrz_state(self._vydrz.snapshot(pid)))
-        if self._vydrz.phase == VydrzPhase.FINISHED:
+        if self._vydrz.phase.value == "finished":
             self.phase = RoomPhase.FINISHED
 
     async def _handle_vydrz_choose(self, client: ConnectedClient, payload: VydrzChoosePayload) -> None:
         if self._vydrz is None:
             await client.send(mk_error("Game not started.", "game_not_started"))
             return
+        if isinstance(self._vydrz, ManualVydrzGame):
+            await client.send(mk_error("Tohle je jiný režim.", "wrong_mode"))
+            return
         result = self._vydrz.action_choose(client.player_id, payload.location_uid, payload.existence_uid)
         if not result.ok:
             await client.send(mk_error(result.error, "action_failed"))
             return
         await client.send(mk_action_ack("vydrz_choose"))
+        await self._send_vydrz_state_all()
+
+    async def _handle_vydrz_plan(self, client: ConnectedClient, payload: VydrzPlanPayload) -> None:
+        if not isinstance(self._vydrz, ManualVydrzGame):
+            await client.send(mk_error("Tohle je jiný režim.", "wrong_mode"))
+            return
+        pairs = [(p.location_uid, p.existence_uid) for p in payload.pairs]
+        result = self._vydrz.action_set_plan(client.player_id, pairs)
+        if not result.ok:
+            await client.send(mk_error(result.error, "action_failed"))
+            return
+        await client.send(mk_action_ack("vydrz_plan"))
+        await self._send_vydrz_state_all()
+
+    async def _handle_vydrz_submit(self, client: ConnectedClient, payload: VydrzSubmitPayload) -> None:
+        if not isinstance(self._vydrz, ManualVydrzGame):
+            await client.send(mk_error("Tohle je jiný režim.", "wrong_mode"))
+            return
+        result = self._vydrz.action_submit(client.player_id, payload.value)
+        if not result.ok:
+            await client.send(mk_error(result.error, "action_failed"))
+            return
+        await client.send(mk_action_ack("vydrz_submit"))
         await self._send_vydrz_state_all()
 
     async def _handle_vydrz_next_round(self, client: ConnectedClient, payload: VydrzNextRoundPayload) -> None:
@@ -833,6 +863,8 @@ class Room:
                 "set_mode":         self._handle_set_mode,
                 "vydrz_choose":     self._handle_vydrz_choose,
                 "vydrz_next_round": self._handle_vydrz_next_round,
+                "vydrz_plan":       self._handle_vydrz_plan,
+                "vydrz_submit":     self._handle_vydrz_submit,
                 "request_snapshot": self._handle_request_snapshot,
                 "chat":             self._handle_chat,
             }
