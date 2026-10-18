@@ -457,6 +457,10 @@ class Game:
         if not val.ok:
             return val
 
+        # Only now is the play legal, so only now does it use up the allowance.
+        if card.id == "bang":
+            player.has_played_bang = True
+
         # --- remove from hand ---
         player.play_card(card_uid)
 
@@ -531,6 +535,12 @@ class Game:
         hand_limit = player.hp   # standard rule: hand limit = current HP
         if player.hand_count() > hand_limit:
             excess = player.hand_count() - hand_limit
+            if s.turn.phase == TurnPhase.PLAY:
+                # Hand to be trimmed: enter the DISCARD phase so that
+                # action_discard_card becomes legal.  The player then
+                # discards and calls end_turn again.
+                self._advance_phase()
+                return ActionResult.success(EventType.PHASE_CHANGED)
             return ActionResult.fail(
                 f"You must discard {excess} more card(s) before ending your turn."
             )
@@ -589,7 +599,6 @@ class Game:
             has_volcanic = player.has_equipment("volcanic")
             if player.has_played_bang and not has_volcanic:
                 return ActionResult.fail("You can only play one Bang! per turn.")
-            player.has_played_bang = True
 
         # Cards that require a target.
         needs_target = any(

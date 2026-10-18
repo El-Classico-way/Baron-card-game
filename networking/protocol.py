@@ -118,6 +118,11 @@ class DiscardCardPayload(BaseModel):
     model_config = {"extra": "ignore"}
 
 
+class StartGamePayload(BaseModel):
+    """Host asks to start the game from the lobby. No fields."""
+    model_config = {"extra": "ignore"}
+
+
 class EndTurnPayload(BaseModel):
     """Player signals they are done with their turn."""
     model_config = {"extra": "ignore"}
@@ -154,6 +159,7 @@ INBOUND_PAYLOAD_MODELS: dict[str, type[BaseModel]] = {
     "play_card":        PlayCardPayload,
     "discard_card":     DiscardCardPayload,
     "end_turn":         EndTurnPayload,
+    "start_game":       StartGamePayload,
     "request_snapshot": RequestSnapshotPayload,
     "chat":             ChatPayload,
 }

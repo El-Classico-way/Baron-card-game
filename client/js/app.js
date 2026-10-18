@@ -179,16 +179,11 @@ function _showFormError(form, message) {
 function _wireLobbyControls(elements, socket, store) {
   const { startGameBtn } = elements;
 
-  // Start game: host only, server will reject if not host.
-  // We just send a signal via chat-style message for now; a dedicated
-  // "start_game" packet type should be added to protocol.py.
-  // TODO: add "start_game" message type to server protocol.
-  // For now, the button text reminds the host to use the server console.
+  // Start game: host only; the server rejects anyone else.
   if (startGameBtn) {
     on(startGameBtn, "click", () => {
-      // Placeholder — actual start_game message needs server support.
+      socket.send("start_game");
       bus.emit("ui:start_game_clicked", {});
-      console.info("[App] start_game_clicked — wire to server when ready.");
     });
   }
 

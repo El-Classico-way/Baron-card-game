@@ -87,6 +87,7 @@ from networking.protocol import (
     PlayCardPayload,
     DiscardCardPayload,
     EndTurnPayload,
+    StartGamePayload,
     RequestSnapshotPayload,
     ChatPayload,
     # Outbound builders
@@ -152,8 +153,15 @@ class Room:
         await room.start_game(cards)
     """
 
-    def __init__(self, room_id: str) -> None:
+    def __init__(
+        self,
+        room_id: str,
+        deck_factory: Callable[[], list[Card]] | None = None,
+    ) -> None:
         self.room_id: str = room_id
+        # Supplies the deck when the host starts the game.  Injected so the
+        # room stays ignorant of card loading (see Room.start_game docs).
+        self._deck_factory = deck_factory
         self.phase: str = RoomPhase.LOBBY
         self.created_at: float = time.time()
 
@@ -178,8 +186,12 @@ class Room:
         self._subscribe_to_bus()
 
     @classmethod
-    def create(cls, room_id: str | None = None) -> "Room":
-        return cls(room_id=room_id or uuid.uuid4().hex[:8])
+    def create(
+        cls,
+        room_id: str | None = None,
+        deck_factory: Callable[[], list[Card]] | None = None,
+    ) -> "Room":
+        return cls(room_id=room_id or uuid.uuid4().hex[:8], deck_factory=deck_factory)
 
     # ------------------------------------------------------------------
     # Properties
@@ -459,6 +471,22 @@ class Room:
         else:
             await client.send(mk_error(result.error, "action_failed"))
 
+    async def _handle_start_game(
+        self, client: ConnectedClient, payload: StartGamePayload
+    ) -> None:
+        if client.player_id != self._host_player_id:
+            await client.send(mk_error("Only the host can start the game.", "not_host"))
+            return
+        if self._deck_factory is None:
+            await client.send(mk_error("Server has no deck configured.", "no_deck"))
+            return
+        if self.phase != RoomPhase.LOBBY:
+            await client.send(mk_error("Game already started.", "already_started"))
+            return
+        # start_game() reports its own failures (e.g. not enough players).
+        if await self.start_game(self._deck_factory()):
+            await client.send(mk_action_ack("start_game"))
+
     async def _handle_end_turn(
         self, client: ConnectedClient, payload: EndTurnPayload
     ) -> None:
@@ -693,6 +721,7 @@ class Room:
                 "play_card":        self._handle_play_card,
                 "discard_card":     self._handle_discard_card,
                 "end_turn":         self._handle_end_turn,
+                "start_game":       self._handle_start_game,
                 "request_snapshot": self._handle_request_snapshot,
                 "chat":             self._handle_chat,
             }

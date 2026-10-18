@@ -67,12 +67,20 @@ from networking.client import ConnectedClient
 from networking.protocol import mk_error, parse_inbound
 from networking.room import Room, RoomPhase
 
+from cards import load_default_registry
+from game.card import Card
+
 logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
 # Room registry
 # ---------------------------------------------------------------------------
+
+def _default_deck() -> list[Card]:
+    """Fresh deck from the base card pack (new Card instances every game)."""
+    return load_default_registry().build_deck()
+
 
 class RoomRegistry:
     """
@@ -109,14 +117,14 @@ class RoomRegistry:
         async with self._get_lock():
             room = self._rooms.get(room_id)
             if room is None:
-                room = Room.create(room_id=room_id)
+                room = Room.create(room_id=room_id, deck_factory=_default_deck)
                 self._rooms[room_id] = room
                 logger.info("Created room %s.", room_id)
             return room
 
     async def create_new(self) -> Room:
         """Create a room with a server-generated id and register it."""
-        room = Room.create()
+        room = Room.create(deck_factory=_default_deck)
         async with self._get_lock():
             self._rooms[room.room_id] = room
         logger.info("Created room %s (server-generated id).", room.room_id)

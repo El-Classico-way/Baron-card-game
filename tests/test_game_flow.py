@@ -147,30 +147,25 @@ def test_killing_blow_eliminates_and_ends_game(make_game):
     assert h.state.winner_ids
 
 
-# ---- Known engine bugs, found while writing these tests. ----
-# strict xfail: the suite fails loudly when someone fixes one, prompting removal.
-
-@pytest.mark.xfail(strict=True, reason=(
-    "Deadlock: action_end_turn demands discards when hand > hp, but "
-    "action_discard_card requires TurnPhase.DISCARD and nothing advances "
-    "PLAY -> DISCARD."))
 def test_over_limit_hand_can_always_finish_turn(make_game):
+    """Regression: end_turn used to demand discards that were never legal."""
     h = make_game(4)
     p = _ready_to_play(h)
     while p.hand_count() <= p.hp:
         _give(h, p, "bang")
-    for _ in range(20):
-        if h.game.action_end_turn(p.player_id).ok:
-            return
-        if p.hand:
-            h.game.action_discard_card(p.player_id, p.hand[0].uid)
-    pytest.fail("player is stuck: cannot discard and cannot end turn")
+    first = p.player_id
+
+    assert h.game.action_end_turn(first).ok            # PLAY -> DISCARD
+    assert h.state.turn.phase == TurnPhase.DISCARD
+    assert not h.game.action_end_turn(first).ok        # still over the limit
+    while p.hand_count() > p.hp:
+        assert h.game.action_discard_card(first, p.hand[0].uid).ok
+    assert h.game.action_end_turn(first).ok
+    assert h.current.player_id != first
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "_validate_brown_play sets has_played_bang=True before the target is "
-    "validated, so an illegal Bang! (e.g. no target) burns the turn's Bang!."))
 def test_failed_bang_does_not_consume_bang_allowance(make_game):
+    """Regression: an illegal Bang! used to burn the turn's Bang! allowance."""
     h = make_game(4)
     p = _ready_to_play(h)
     bang = _give(h, p, "bang")

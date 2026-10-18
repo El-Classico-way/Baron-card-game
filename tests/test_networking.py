@@ -44,3 +44,19 @@ def test_two_players_see_each_other():
             with c.websocket_connect("/ws/roomC?display_name=Bob") as b:
                 _drain_until(b, "joined")
                 assert _drain_until(a, "player_connected")
+
+
+def test_host_starts_game_and_players_get_hands():
+    with TestClient(app) as c:
+        with c.websocket_connect("/ws/roomD?display_name=Alice") as a, \
+             c.websocket_connect("/ws/roomD?display_name=Bob") as b:
+            _drain_until(a, "joined")
+            _drain_until(b, "joined")
+
+            # Non-host is refused.
+            b.send_json({"type": "start_game", "payload": {}})
+            assert _drain_until(b, "error")["payload"]["code"] == "not_host"
+
+            a.send_json({"type": "start_game", "payload": {}})
+            assert _drain_until(a, "private_hand")
+            assert _drain_until(b, "private_hand")
