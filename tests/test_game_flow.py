@@ -172,3 +172,25 @@ def test_failed_bang_does_not_consume_bang_allowance(make_game):
     assert not h.game.action_play_card(p.player_id, bang.uid).ok  # no target
     t = h.state.next_alive_player(p.player_id).player_id
     assert h.game.action_play_card(p.player_id, bang.uid, t).ok
+
+
+def test_effects_resolve_inside_a_running_event_loop(make_game):
+    """Regression: with a running loop (as under FastAPI) effects used to be
+    scheduled on that loop, blocked for 5s, and never applied."""
+    import asyncio
+
+    h = make_game(4)
+    p = _ready_to_play(h)
+    bang = _give(h, p, "bang")
+    target = h.state.next_alive_player(p.player_id)
+    hp = target.hp
+
+    async def play():
+        return h.game.action_play_card(p.player_id, bang.uid, target.player_id)
+
+    # Fresh thread: a sync-Playwright session elsewhere in the run can leave
+    # a loop running in the main thread, which asyncio.run() would reject.
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(1) as pool:
+        assert pool.submit(asyncio.run, play()).result(timeout=10).ok
+    assert target.hp == hp - 1

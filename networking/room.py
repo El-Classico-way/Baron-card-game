@@ -551,6 +551,10 @@ class Room:
         self._bus.subscribe(EventType.CARDS_DEALT,     self._on_cards_dealt)
         self._bus.subscribe(EventType.CARD_DRAWN,      self._on_card_drawn)
         self._bus.subscribe(EventType.STATE_SNAPSHOT,  self._on_state_snapshot)
+        # Playing/discarding changes hands (and steal effects change other
+        # players' hands), so refresh every player's private hand.
+        self._bus.subscribe(EventType.CARD_PLAYED,     self._on_hands_changed)
+        self._bus.subscribe(EventType.CARD_DISCARDED,  self._on_hands_changed)
 
         # Targeted events.
         self._bus.subscribe(EventType.REACTION_REQUESTED, self._on_reaction_requested)
@@ -585,6 +589,21 @@ class Room:
                     await client.send(mk_private_hand(player.to_private_dict()))
                 except KeyError:
                     pass
+
+    def _on_hands_changed(self, event: GameEvent) -> None:
+        asyncio.create_task(self._send_all_private_hands())
+
+    async def _send_all_private_hands(self) -> None:
+        if self._state is None:
+            return
+        for player_id, client in self._clients.items():
+            if not client.is_connected:
+                continue
+            try:
+                player = self._state.get_player(player_id)
+            except KeyError:
+                continue
+            await client.send(mk_private_hand(player.to_private_dict()))
 
     def _on_card_drawn(self, event: CardDrawnEvent) -> None:
         """

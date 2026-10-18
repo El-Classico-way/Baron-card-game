@@ -52,8 +52,15 @@ export class Renderer {
     bus.on("store:lobby_updated",   ()  => this.renderLobby());
     bus.on("store:state_replaced",  ()  => this.renderGame());
     bus.on("store:hand_updated",    ()  => this.renderHand());
-    bus.on("store:turn_changed",    ()  => this.renderTurnIndicator());
-    bus.on("store:phase_changed",   ()  => this.renderActionBar());
+    bus.on("store:turn_changed",    ()  => {
+      this.renderTurnIndicator();
+      this.renderActionBar();   // buttons depend on whose turn it is
+      this.renderHand();        // hand cards are only clickable on my turn
+    });
+    bus.on("store:phase_changed",   ()  => {
+      this.renderActionBar();
+      this.renderTurnIndicator();
+    });
     bus.on("store:selection_changed",() => this.renderHand());
     bus.on("store:damage_dealt",    (d) => this.renderPlayerHp(d.targetId));
     bus.on("store:player_healed",   (d) => this.renderPlayerHp(d.playerId));
@@ -200,6 +207,9 @@ export class Renderer {
         bus.emit("ui:target_clicked", { playerId: node.dataset.playerId });
       });
     });
+
+    // Own HP lives outside the opponents ring; draw it on every full render.
+    this.renderPlayerHp(myPlayerId);
 
     bus.emit("render:players_rendered", {});
   }
@@ -383,9 +393,12 @@ export class Renderer {
     const isMyTurn      = game.turn.playerId === myPlayerId;
 
     if (this._el.turnIndicator) {
+      const phase = game.turn.phase;
+      const suffix = isMyTurn && phase === "discard" ? " — discard down to your HP" : "";
       this._el.turnIndicator.textContent = isMyTurn
-        ? "Your turn"
+        ? `Your turn${suffix}`
         : `${currentPlayer?.display_name ?? "?"}'s turn`;
+      this._el.turnIndicator.dataset.phase = phase;
       this._el.turnIndicator.classList.toggle("turn-indicator--mine", isMyTurn);
     }
 

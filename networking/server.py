@@ -56,11 +56,13 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
 from networking.client import ConnectedClient
@@ -71,6 +73,8 @@ from cards import load_default_registry
 from game.card import Card
 
 logger = logging.getLogger(__name__)
+
+CLIENT_DIR = Path(__file__).resolve().parent.parent / "client"
 
 
 # ---------------------------------------------------------------------------
@@ -204,6 +208,10 @@ def create_app() -> FastAPI:
     # Attach routes.
     app.include_router(lobby_router)
     app.include_router(ws_router)
+
+    # Serve the browser client last so API/WebSocket routes take precedence.
+    if CLIENT_DIR.is_dir():
+        app.mount("/", StaticFiles(directory=CLIENT_DIR, html=True), name="client")
 
     return app
 
