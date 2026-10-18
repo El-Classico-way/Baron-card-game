@@ -15,6 +15,19 @@
 import { cardBack, cardFront } from "./cards.js";
 import * as sfx from "./sound.js";
 
+/**
+ * Turn a card over: squeeze the back to nothing, swap faces, widen the front again.
+ * Plain 2D (no preserve-3d / backface-visibility), which some desktop GPU paths render
+ * wrongly by showing the mirrored front instead of the back.
+ */
+async function flipCard(el) {
+  const inner = el.querySelector(".di__inner");
+  const half = T.flip / 2;
+  await inner.animate([{ transform: "scaleX(1)" }, { transform: "scaleX(0)" }], { duration: half, easing: "ease-in", fill: "forwards" }).finished;
+  el.classList.add("is-flipped");
+  await inner.animate([{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], { duration: half, easing: "ease-out", fill: "forwards" }).finished;
+}
+
 const T = { back: 140, fly: 340, flip: 240, hold: 400, land: 320, gap: 90 };
 
 const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -127,8 +140,8 @@ export class DealIntro {
     if (!alive()) { el.remove(); return; }
     await sleep(T.back);                                         // the card back is visible for a moment
     sfx.flip();
-    el.classList.add("is-flipped");
-    await sleep(T.flip + 900);                                   // time to read the stats
+    await flipCard(el);
+    await sleep(900);                                   // time to read the stats
     if (!alive()) { el.remove(); return; }
 
     const slot = getCharSlot?.();
@@ -172,8 +185,8 @@ export class DealIntro {
     // 2. turn face up
     await sleep(T.back);
     sfx.flip();
-    items.forEach(it => it.el.classList.add("is-flipped"));
-    await sleep(T.flip + T.hold);
+    await Promise.all(items.map(it => flipCard(it.el)));
+    await sleep(T.hold);
     if (!alive()) { items.forEach(it => it.el.remove()); return; }
 
     // 3. fly into the hand

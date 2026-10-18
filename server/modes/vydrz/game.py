@@ -98,6 +98,7 @@ class VydrzGame:
         self._drink_deck: list[DrinkCard] = []
         self._drink_discard: list[DrinkCard] = []
         self._location_pool_left = 0
+        self._left: dict[str, list] = {"postava": [], "lokace": [], "existence": []}
         self._existence_pool_left = 0
         self.last_result: dict | None = None
         self.winner_announced = False             # the host has announced the winner
@@ -134,6 +135,7 @@ class VydrzGame:
         self._location_pool_left = deal.locations_left
         self._existence_pool_left = deal.existences_left
         self._drink_deck = deal.drink_deck
+        self._left = {"postava": deal.characters_left, "lokace": deal.locations_pile, "existence": deal.existences_pile}
         return ""
 
     # ---------------------------------------------------------------- actions
@@ -336,6 +338,9 @@ class VydrzGame:
                 "existence": self._existence_pool_left,
                 "postava": len(self.content.characters) - len(self.players),
             },
+            # Undealt cards (for the deck inspector), in the system order of the card data.
+            "decks_cards": {k: [c.to_dict() for c in v] for k, v in self._left.items()},
+            "drinks_left": {d.id: sum(1 for c in self._drink_deck if c.drink == d.id) for d in self.content.drinks},
             "last_result": self._visible_result(),
             "winner_announced": self.winner_announced,
         }

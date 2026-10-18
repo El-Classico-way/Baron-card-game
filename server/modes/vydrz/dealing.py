@@ -7,7 +7,7 @@ seeded game deals the same way every time.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable
 
 from modes.vydrz.loader import VydrzContent
@@ -26,6 +26,11 @@ class Deal:
     locations_left: int
     existences_left: int
     drink_deck: list[DrinkCard]
+    # What is left in the decks after dealing, in the system order of the card data
+    # (not the order they would be drawn in).
+    characters_left: list[CharacterCard] = field(default_factory=list)
+    locations_pile: list[LocationCard] = field(default_factory=list)
+    existences_pile: list[ExistenceCard] = field(default_factory=list)
 
 
 def deal_hands(content: VydrzContent, player_count: int,
@@ -51,7 +56,16 @@ def deal_hands(content: VydrzContent, player_count: int,
         for i in range(n):
             locations[i].append(pile[i])
         locations_left += len(pile) - n
+    def rest(all_cards, dealt_uids):
+        return [c for c in all_cards if c.uid not in dealt_uids]
+
+    dealt_chars = {c.uid for c in characters[:n]}
+    dealt_locs = {l.uid for row in locations for l in row}
+    dealt_exs = {e.uid for e in existences[:n * EXISTENCES_DEALT]}
     return Deal(
+        characters_left=rest(content.make_characters(), dealt_chars),
+        locations_pile=rest(content.make_locations(), dealt_locs),
+        existences_pile=rest(content.make_existences(), dealt_exs),
         characters=characters[:n],
         locations=locations,
         existences=[existences[i * EXISTENCES_DEALT:(i + 1) * EXISTENCES_DEALT] for i in range(n)],
