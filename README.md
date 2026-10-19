@@ -14,6 +14,9 @@ otevře bezplatný „quick tunnel“ přes `cloudflared` (stáhne se jednorázo
 `.bin/`, účet není potřeba). Kamarádi odkaz jen otevřou v prohlížeči a napíšou
 jméno. Hostem hry je ten, kdo založí místnost. Konec přes Ctrl+C.
 
+- **Windows:** nainstaluj Python 3.10+ (https://www.python.org, zaškrtni „Add python.exe to PATH“) a
+  spusť `start.bat` (dvojklikem nebo z příkazové řádky). Dělá totéž co `start.sh`, parametr `--lan`
+  i proměnná `PORT` fungují stejně. Skript jsem na Windows nemohl vyzkoušet, jen napsat podle `start.sh`.
 - `./start.sh --lan` jen místní síť, nic se nestahuje (hráči jdou na `http://<IP>:8000`).
 - `PORT=9000 ./start.sh` jiný port.
 - Odkaz je veřejný, kdo ho má, může hrát. Po skončení se zruší spolu se serverem.
@@ -36,6 +39,10 @@ Za běhu hry:
 ## Run the server
 
     PYTHONPATH=server:. uvicorn networking.server:app --port 8000
+
+## Struktura repozitáře
+
+Stručná mapa „kam sáhnout“ je v [STRUCTURE.md](STRUCTURE.md).
 
 ## Run the tests
 

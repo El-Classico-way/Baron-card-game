@@ -118,6 +118,7 @@ function boot() {
   }
 
   _wireSessionEvents(socket, store, elements, [vydrz, manual]);
+  _wireOverlayEdges();
 
   // 8. Wire join / lobby forms
   _wireJoinForm(elements, socket);
@@ -261,6 +262,20 @@ function _wireLobbyControls(elements, socket, store) {
   bus.on("store:joined", () => {
     const inGame = ["vydrz-panel", "vm-panel", "game-panel"].some(id => document.getElementById(id)?.hidden === false);
     if (!inGame) _showPanel(elements, "lobby");
+  });
+}
+
+/**
+ * Full-screen overlays scroll themselves (.vr, .vs). Their dimming backdrop is a fixed child that
+ * ignores pointer events, otherwise the mouse wheel over the screen edges would not scroll
+ * them. A click on the bare overlay area outside the panel therefore closes it like the
+ * backdrop used to.
+ */
+function _wireOverlayEdges() {
+  document.addEventListener("click", (e) => {
+    const t = e.target;
+    if (!t?.classList || !(t.classList.contains("vr") || t.classList.contains("vs"))) return;
+    t.querySelector(".vr__backdrop, .vs__backdrop")?.click();
   });
 }
 

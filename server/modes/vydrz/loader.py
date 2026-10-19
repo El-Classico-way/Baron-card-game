@@ -21,7 +21,8 @@ class ContentError(ValueError):
 class VydrzContent:
     """Validated card definitions. Instances (with uids) are made per game."""
     drinks: tuple[DrinkInfo, ...]
-    drink_copies: int
+    drink_mean: int            # cards per drink kind in a game: mean +/- spread
+    drink_spread: int
     characters: tuple[dict, ...]
     locations: tuple[dict, ...]
     existences: tuple[dict, ...]
@@ -31,7 +32,8 @@ class VydrzContent:
 
     # Fresh instances; uids are unique within one game.
     def make_characters(self) -> list[CharacterCard]:
-        return [CharacterCard(uid=f"c-{c['id']}", id=c["id"], name=c["name"], stats=dict(c["stats"]))
+        return [CharacterCard(uid=f"c-{c['id']}", id=c["id"], name=c["name"], stats=dict(c["stats"]),
+                              flag=c.get("flag", ""))
                 for c in self.characters]
 
     def make_locations(self) -> list[LocationCard]:
@@ -44,9 +46,14 @@ class VydrzContent:
                               description=c.get("description", ""), stats=dict(c["stats"]))
                 for c in self.existences]
 
-    def make_drinks(self) -> list[DrinkCard]:
-        return [DrinkCard(uid=f"d-{d}-{i}", drink=d)
-                for d in DRINKS for i in range(self.drink_copies)]
+    def drink_counts(self, randint=None) -> dict[str, int]:
+        """Cards per drink kind for one game: mean +/- spread (exactly the mean without an RNG)."""
+        return {d: self.drink_mean + (randint(-self.drink_spread, self.drink_spread) if randint else 0)
+                for d in DRINKS}
+
+    def make_drinks(self, counts: dict[str, int] | None = None) -> list[DrinkCard]:
+        counts = counts or self.drink_counts()
+        return [DrinkCard(uid=f"d-{d}-{i}", drink=d) for d in DRINKS for i in range(counts[d])]
 
     def to_public_dict(self) -> dict:
         return {"drinks": [{"id": d.id, "name": d.name} for d in self.drinks]}
@@ -84,7 +91,8 @@ def parse_content(data: dict, source: str = "<data>") -> VydrzContent:
             raise ContentError(f"{source}: duplicate card ids")
         return VydrzContent(
             drinks=drinks,
-            drink_copies=int(data.get("drink_copies", 10)),
+            drink_mean=int(data.get("drink_count", {}).get("mean", data.get("drink_copies", 10))),
+            drink_spread=int(data.get("drink_count", {}).get("spread", 0)),
             characters=tuple(data["characters"]),
             locations=tuple(data["locations"]),
             existences=tuple(data["existences"]),

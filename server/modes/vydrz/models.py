@@ -26,10 +26,11 @@ class CharacterCard:
     id: str
     name: str
     stats: dict[str, int]          # every drink -> int
+    flag: str = ""                 # country flag shown on the card ("cz", "sk"); empty = none
 
     def to_dict(self) -> dict:
         return {"uid": self.uid, "kind": "postava", "id": self.id, "name": self.name,
-                "stats": dict(self.stats)}
+                "flag": self.flag, "stats": dict(self.stats)}
 
 
 @dataclass(frozen=True)

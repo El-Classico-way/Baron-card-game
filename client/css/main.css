@@ -484,7 +484,7 @@ body.is-targeting .opponent[data-player-id]:not(.opponent--dead) {
 
 /* Card inspector -------------------------------------------- */
 
-.inspector { position: fixed; inset: 0; z-index: 250; display: flex; align-items: center; justify-content: center; padding: calc(var(--safe-t) + 12px) calc(var(--safe-r) + 12px) calc(var(--safe-b) + 12px) calc(var(--safe-l) + 12px); }
+.inspector { position: fixed; inset: 0; z-index: 280; display: flex; align-items: center; justify-content: center; padding: calc(var(--safe-t) + 12px) calc(var(--safe-r) + 12px) calc(var(--safe-b) + 12px) calc(var(--safe-l) + 12px); }
 .inspector__backdrop { position: fixed; inset: 0; background: rgba(4, 12, 8, .88); }   /* no backdrop-filter: blurring a full-screen layer makes every animation frame cost 4x on desktop */
 .inspector__sheet {
   position: relative; width: 100%; max-width: 420px; max-height: 100%;

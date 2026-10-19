@@ -89,10 +89,11 @@ def test_pick_confirm_and_wait_state(page, base_url):
 
 def test_inspect_card_shows_stats_big(page, base_url):
     _table(page, base_url)
+    name = page.locator("#vy-locations .vy-slot").nth(3).locator(".vc__title").inner_text()
     page.locator("#vy-locations .vy-slot").nth(3).click()
     page.locator("#vy-locations .vy-slot.is-selected [data-inspect]").click()
     expect(page.locator("#card-inspector")).to_be_visible()
-    expect(page.locator(".inspector__name")).to_contain_text("Lokace 4")
+    expect(page.locator(".inspector__name")).to_have_text(name)
     big = page.locator("#card-inspector .vc--lokace").bounding_box()
     small = page.locator("#vy-locations .vc--lokace").first.bounding_box()
     assert big["width"] > small["width"]
@@ -153,7 +154,7 @@ def test_full_mock_game_to_the_end(page, base_url):
     page.click(".vr__announce")
     expect(page.locator("#baron-splash")).to_be_visible(timeout=10000)        # "<Jméno> je Baron!" for everyone
     winner = page.locator("#baron-splash .bs__name").inner_text()
-    expect(page.locator("#baron-splash .bs__title")).to_contain_text("je Baron!")
+    expect(page.locator("#baron-splash .bs__title")).to_contain_text("je Baron za postavu")
     page.keyboard.press("Enter")
     expect(page.locator("#baron-splash")).to_be_hidden()
     expect(page.locator(".vr__final")).to_be_visible()

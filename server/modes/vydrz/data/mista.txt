@@ -1,0 +1,79 @@
+# DOČASNÝ seznam: města a vesnice České republiky, použité jako názvy lokací.
+# Jedno jméno na řádek, řádky s # se přeskakují. Nahradí se skutečnými lokacemi.
+# Potřeba je aspoň 64 jmen (8 čísel lokací x 8 karet).
+Praha
+Brno
+Ostrava
+Plzeň
+Liberec
+Olomouc
+České Budějovice
+Hradec Králové
+Ústí nad Labem
+Pardubice
+Zlín
+Havířov
+Kladno
+Most
+Opava
+Frýdek-Místek
+Karviná
+Jihlava
+Teplice
+Děčín
+Karlovy Vary
+Chomutov
+Jablonec nad Nisou
+Mladá Boleslav
+Prostějov
+Přerov
+Česká Lípa
+Třebíč
+Třinec
+Tábor
+Znojmo
+Příbram
+Cheb
+Kolín
+Trutnov
+Písek
+Kroměříž
+Šumperk
+Vsetín
+Valašské Meziříčí
+Litvínov
+Nový Jičín
+Uherské Hradiště
+Hodonín
+Český Těšín
+Břeclav
+Krnov
+Litoměřice
+Sokolov
+Žďár nad Sázavou
+Blansko
+Vyškov
+Mikulov
+Telč
+Český Krumlov
+Kutná Hora
+Slavonice
+Lipnice nad Sázavou
+Hrubá Skála
+Horní Planá
+Lhota pod Libčany
+Kostelec nad Orlicí
+Dolní Lhota
+Zubří
+Strážnice
+Rožmitál pod Třemšínem
+Horní Dubňany
+Vysoké nad Jizerou
+Staré Hamry
+Kunčice pod Ondřejníkem
+Pec pod Sněžkou
+Jestřabí v Krkonoších
+Staré Město pod Landštejnem
+Louka u Litvínova
+Lány
+Kámen

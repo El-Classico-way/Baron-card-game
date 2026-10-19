@@ -33,12 +33,13 @@ export class ResultOverlay {
    * @param {HTMLElement} root
    * @param {{ onNext: () => void, onLeave: () => void }} handlers
    */
-  constructor(root, { onNext, onLeave, onAnnounce, onLobby }) {
+  constructor(root, { onNext, onLeave, onAnnounce, onLobby, onInspect }) {
     this._root = root;
     this._onNext = onNext;
     this._onLeave = onLeave;
     this._onAnnounce = onAnnounce;
     this._onLobby = onLobby;
+    this._onInspect = onInspect;
     this._sfx = realSfx;
     this._animating = false;
     this._pending = null;     // winner announcement that arrived while the counting still ran
@@ -129,11 +130,13 @@ export class ResultOverlay {
     if (result.tiebreak.length) {
       this._note("Remíza! Rozstřel: počítají se jen postavy.");
       sfx.tieSting();
-      await wait(700); if (!alive()) return;
-      for (const step of result.tiebreak) {
-        await this._playTieStep(step, ctx, wait, alive);
+      await wait(1300); if (!alive()) return;
+      for (let i = 0; i < result.tiebreak.length; i++) {
+        if (i > 0) { this._note("Pořád remíza! Táhne se další chlast…"); await wait(1500); if (!alive()) return; }
+        await this._playTieStep(result.tiebreak[i], ctx, wait, alive);
         if (!alive()) return;
       }
+      await wait(600); if (!alive()) return;
     }
 
     // ---- outcome -----------------------------------------------------------
@@ -169,12 +172,12 @@ export class ResultOverlay {
       if (token !== this._token) return;
     }
     this._lastResult = { ...(this._lastResult ?? {}), final };
-    this._showFinal(final, ctx, animate);
+    this._showFinal(final, ctx, false);              // the splash has its own sound
     this._showFooter(this._lastResult, ctx);
   }
 
   async _splash(f, ctx) {
-    await showBaronSplash({ name: f.winner_id ? (ctx.names[f.winner_id] ?? f.winner_id) : null, isMe: f.winner_id === ctx.myId });
+    await showBaronSplash({ name: f.winner_id ? (ctx.names[f.winner_id] ?? f.winner_id) : null, character: f.winner_id ? ctx.characters?.[f.winner_id] : null, isMe: f.winner_id === ctx.myId });
   }
 
   // ---------------------------------------------------------------- building
@@ -215,6 +218,7 @@ export class ResultOverlay {
         <footer class="vr__foot" hidden></footer>
       </div>`;
     this._root.setAttribute("aria-labelledby", "vr-title");
+    if (ctx.character && result.picks[ctx.myId]) this._wireMine(result, ctx);
     this._q(".vr__close").addEventListener("click", () => this.close());
     this._q(".vr__backdrop").addEventListener("click", () => this.close());
   }
@@ -229,6 +233,16 @@ export class ResultOverlay {
       ${card("lokace", "Lokace", locationFront(pick.lokace, { extra: "vc--mini" }))}
       ${card("existence", "Existence", existenceFront(pick.existence, { extra: "vc--mini" }))}
     </section>`;
+  }
+
+  _wireMine(result, ctx) {
+    const mine = this._q(".vr__mine");
+    if (!mine) return;
+    const cards = [ctx.character, result.picks[ctx.myId].lokace, result.picks[ctx.myId].existence];
+    mine.addEventListener("click", (e) => {
+      const el = e.target.closest(".vc[data-uid]");
+      if (el) this._onInspect?.(cards, el.dataset.uid);
+    });
   }
 
   _markMine(src, drink) {
@@ -294,10 +308,10 @@ export class ResultOverlay {
            ${esc(ctx.names[pid] ?? pid)} <b>${fmtStat(v)}</b></span>`).join("")}</div>`;
     box.appendChild(el);
     this._sfx.flip();
-    await wait(450); if (!alive()) return;
+    await wait(800); if (!alive()) return;
     el.classList.add("is-resolved");
     this._sfx.tick(Math.max(...Object.values(step.values)), 0);
-    await wait(750);
+    await wait(1500);
   }
 
   _showOutcome(result, ctx) {

@@ -45,6 +45,13 @@ export function tick(value, running) {
   else tone({ freq: 190 + value * 12, slideTo: 120, type: "sawtooth", dur: 0.2, gain: 0.12 });
 }
 
+/** Manual counting: − steps mirror + steps (same voice, pitch falls instead of rising). */
+export function stepSound(delta, running) {
+  if (delta > 0) return tick(delta, running);
+  const start = Math.max(150, 330 + Math.max(-6, Math.min(12, running)) * 22 + 40);
+  tone({ freq: start, slideTo: Math.max(70, start - 90), dur: 0.16 });
+}
+
 /** A drink card was turned over. */
 export function flip() { tone({ freq: 520, slideTo: 260, type: "square", dur: 0.09, gain: 0.07 }); }
 
@@ -58,3 +65,31 @@ export function tieSting() { tone({ freq: 300, slideTo: 150, type: "square", dur
 
 /** UI feedback for taps on cards. */
 export function pop() { tone({ freq: 700, slideTo: 880, dur: 0.06, gain: 0.07 }); }
+
+/** Party popper: a bang, a burst of confetti/streamer rustle and a small rising whistle. One effect, not a jingle. */
+export function partyPopper() {
+  if (!getSettings().sound) return;
+  const a = audio();
+  if (!a) return;
+  const t0 = a.currentTime;
+  // bang: a quick low thump
+  tone({ freq: 190, slideTo: 45, type: "sine", dur: 0.22, gain: 0.35 });
+  // paper rustle: decaying band-passed noise
+  const len = Math.floor(a.sampleRate * 1.3);
+  const buf = a.createBuffer(1, len, a.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) {
+    const t = i / len;
+    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 2.2) * (t < 0.01 ? t * 100 : 1) * (0.7 + 0.3 * Math.sin(i / 90));
+  }
+  const src = a.createBufferSource();
+  src.buffer = buf;
+  const bp = a.createBiquadFilter();
+  bp.type = "bandpass"; bp.frequency.value = 5200; bp.Q.value = 0.7;
+  const g = a.createGain();
+  g.gain.value = 0.5;
+  src.connect(bp).connect(g).connect(a.destination);
+  src.start(t0 + 0.02);
+  // streamer whistle
+  tone({ freq: 1200, slideTo: 2600, type: "sine", dur: 0.35, gain: 0.05, delay: 0.05 });
+}

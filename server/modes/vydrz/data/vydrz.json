@@ -1,8 +1,11 @@
 {
  "pack_id": "vydrz-placeholder",
- "version": "0.1.0",
- "note": "Random placeholder data. Replace with real card content.",
- "drink_copies": 10,
+ "version": "0.2.0",
+ "note": "Characters are final; location/existence names are temporary lists, stats are random stand-ins.",
+ "drink_count": {
+  "mean": 20,
+  "spread": 5
+ },
  "drinks": [
   {
    "id": "pivo",
@@ -47,163 +50,190 @@
  ],
  "characters": [
   {
-   "id": "char-01",
-   "name": "Postava 1",
+   "id": "stepan",
+   "name": "Štěpán",
+   "flag": "cz",
    "stats": {
-    "pivo": 0,
-    "vino": -2,
-    "jahudka": 2,
-    "gin": 1,
-    "rum": -1,
-    "slivka": -2,
-    "vodka": 2,
-    "cider": 0,
-    "tatran": 3,
-    "jager": 2
-   }
-  },
-  {
-   "id": "char-02",
-   "name": "Postava 2",
-   "stats": {
-    "pivo": 3,
+    "pivo": 2,
     "vino": -1,
-    "jahudka": 1,
-    "gin": -2,
-    "rum": 2,
+    "jahudka": 0,
+    "gin": 1,
+    "rum": -2,
     "slivka": 3,
-    "vodka": 2,
+    "vodka": -1,
     "cider": 0,
-    "tatran": -1,
-    "jager": 0
-   }
-  },
-  {
-   "id": "char-03",
-   "name": "Postava 3",
-   "stats": {
-    "pivo": 1,
-    "vino": 2,
-    "jahudka": 1,
-    "gin": -2,
-    "rum": -1,
-    "slivka": 1,
-    "vodka": 2,
-    "cider": -1,
     "tatran": 1,
     "jager": -3
    }
   },
   {
-   "id": "char-04",
-   "name": "Postava 4",
+   "id": "fanda",
+   "name": "Fanda",
+   "flag": "cz",
    "stats": {
-    "pivo": 2,
-    "vino": 3,
-    "jahudka": 3,
-    "gin": -2,
+    "pivo": 3,
+    "vino": -2,
+    "jahudka": 1,
+    "gin": -1,
     "rum": 2,
-    "slivka": 3,
-    "vodka": 2,
-    "cider": 0,
-    "tatran": 2,
-    "jager": 3
+    "slivka": -3,
+    "vodka": 0,
+    "cider": 1,
+    "tatran": -2,
+    "jager": 1
    }
   },
   {
-   "id": "char-05",
-   "name": "Postava 5",
+   "id": "tomas",
+   "name": "Tomáš",
+   "flag": "cz",
    "stats": {
-    "pivo": 3,
-    "vino": 2,
-    "jahudka": -2,
-    "gin": 1,
-    "rum": -2,
-    "slivka": 3,
-    "vodka": 0,
-    "cider": -3,
-    "tatran": 3,
+    "pivo": -1,
+    "vino": 3,
+    "jahudka": 2,
+    "gin": -2,
+    "rum": 0,
+    "slivka": 1,
+    "vodka": -3,
+    "cider": 2,
+    "tatran": -1,
     "jager": -1
    }
   },
   {
-   "id": "char-06",
-   "name": "Postava 6",
+   "id": "salek",
+   "name": "Šálek",
+   "flag": "cz",
    "stats": {
-    "pivo": 2,
+    "pivo": 1,
     "vino": 0,
-    "jahudka": 0,
-    "gin": -3,
-    "rum": 2,
+    "jahudka": -3,
+    "gin": 3,
+    "rum": -1,
     "slivka": 2,
-    "vodka": -2,
-    "cider": 3,
-    "tatran": -1,
-    "jager": 0
+    "vodka": 1,
+    "cider": -2,
+    "tatran": 2,
+    "jager": -3
    }
   },
   {
-   "id": "char-07",
-   "name": "Postava 7",
+   "id": "jurda",
+   "name": "Jurda",
+   "flag": "cz",
    "stats": {
-    "pivo": -1,
-    "vino": -1,
+    "pivo": -2,
+    "vino": 1,
     "jahudka": 3,
-    "gin": -2,
+    "gin": 0,
+    "rum": 2,
+    "slivka": -1,
+    "vodka": -2,
+    "cider": 3,
+    "tatran": -3,
+    "jager": -1
+   }
+  },
+  {
+   "id": "wirtak",
+   "name": "Wirťák",
+   "flag": "cz",
+   "stats": {
+    "pivo": 3,
+    "vino": -3,
+    "jahudka": 0,
+    "gin": 2,
     "rum": -1,
-    "slivka": 0,
-    "vodka": 0,
+    "slivka": -2,
+    "vodka": 3,
     "cider": -1,
     "tatran": 1,
     "jager": -2
    }
   },
   {
-   "id": "char-08",
-   "name": "Postava 8",
-   "stats": {
-    "pivo": 3,
-    "vino": 0,
-    "jahudka": -2,
-    "gin": -2,
-    "rum": -3,
-    "slivka": 2,
-    "vodka": -2,
-    "cider": 3,
-    "tatran": -3,
-    "jager": 3
-   }
-  },
-  {
-   "id": "char-09",
-   "name": "Postava 9",
-   "stats": {
-    "pivo": -1,
-    "vino": 3,
-    "jahudka": 1,
-    "gin": -1,
-    "rum": 3,
-    "slivka": 1,
-    "vodka": 3,
-    "cider": 2,
-    "tatran": 0,
-    "jager": 1
-   }
-  },
-  {
-   "id": "char-10",
-   "name": "Postava 10",
+   "id": "porucik-dan",
+   "name": "Poručík Dan",
+   "flag": "cz",
    "stats": {
     "pivo": -3,
-    "vino": -1,
-    "jahudka": 3,
-    "gin": 2,
-    "rum": 1,
-    "slivka": 3,
-    "vodka": -2,
-    "cider": -2,
+    "vino": 2,
+    "jahudka": -1,
+    "gin": 1,
+    "rum": 3,
+    "slivka": -2,
+    "vodka": 2,
+    "cider": -1,
     "tatran": 0,
     "jager": -1
+   }
+  },
+  {
+   "id": "frodo",
+   "name": "Frodo",
+   "flag": "cz",
+   "stats": {
+    "pivo": 0,
+    "vino": 2,
+    "jahudka": 3,
+    "gin": -3,
+    "rum": 1,
+    "slivka": 2,
+    "vodka": -2,
+    "cider": 1,
+    "tatran": -3,
+    "jager": -1
+   }
+  },
+  {
+   "id": "dj-quest",
+   "name": "Dj. Quest",
+   "flag": "cz",
+   "stats": {
+    "pivo": 1,
+    "vino": -1,
+    "jahudka": -2,
+    "gin": 2,
+    "rum": -3,
+    "slivka": 0,
+    "vodka": 3,
+    "cider": 3,
+    "tatran": -2,
+    "jager": -1
+   }
+  },
+  {
+   "id": "miki",
+   "name": "Miki",
+   "flag": "cz",
+   "stats": {
+    "pivo": -1,
+    "vino": 1,
+    "jahudka": 2,
+    "gin": -3,
+    "rum": 1,
+    "slivka": 3,
+    "vodka": -1,
+    "cider": -2,
+    "tatran": 2,
+    "jager": -2
+   }
+  },
+  {
+   "id": "martin",
+   "name": "Martin",
+   "flag": "sk",
+   "stats": {
+    "pivo": 2,
+    "vino": 0,
+    "jahudka": -1,
+    "gin": -1,
+    "rum": 3,
+    "slivka": -3,
+    "vodka": 1,
+    "cider": 2,
+    "tatran": -1,
+    "jager": -2
    }
   }
  ],
@@ -211,27 +241,134 @@
   {
    "id": "loc-1-1",
    "number": 1,
-   "name": "Lokace 1.1",
+   "name": "Praha",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
+    "jahudka": 3,
     "gin": 1,
-    "slivka": 2
+    "rum": 3
    }
   },
   {
    "id": "loc-1-2",
    "number": 1,
-   "name": "Lokace 1.2",
+   "name": "Brno",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
-    "rum": 2,
-    "vodka": -1
+    "gin": -1,
+    "cider": 1,
+    "tatran": 2
    }
   },
   {
    "id": "loc-1-3",
    "number": 1,
-   "name": "Lokace 1.3",
+   "name": "Ostrava",
+   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "stats": {
+    "rum": 3,
+    "tatran": -1
+   }
+  },
+  {
+   "id": "loc-1-4",
+   "number": 1,
+   "name": "Plzeň",
+   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "stats": {
+    "gin": 3,
+    "cider": 3
+   }
+  },
+  {
+   "id": "loc-1-5",
+   "number": 1,
+   "name": "Liberec",
+   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "stats": {
+    "gin": 1,
+    "tatran": -3
+   }
+  },
+  {
+   "id": "loc-1-6",
+   "number": 1,
+   "name": "Olomouc",
+   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "stats": {
+    "vino": 3,
+    "vodka": 3,
+    "cider": -2
+   }
+  },
+  {
+   "id": "loc-1-7",
+   "number": 1,
+   "name": "České Budějovice",
+   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "stats": {
+    "slivka": -2,
+    "vodka": -1,
+    "tatran": 1
+   }
+  },
+  {
+   "id": "loc-1-8",
+   "number": 1,
+   "name": "Hradec Králové",
+   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "stats": {
+    "gin": -2,
+    "slivka": -2,
+    "vodka": -3
+   }
+  },
+  {
+   "id": "loc-2-1",
+   "number": 2,
+   "name": "Ústí nad Labem",
+   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "stats": {
+    "pivo": 2,
+    "rum": -1
+   }
+  },
+  {
+   "id": "loc-2-2",
+   "number": 2,
+   "name": "Pardubice",
+   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "stats": {
+    "vino": 3,
+    "slivka": 2,
+    "jager": -2
+   }
+  },
+  {
+   "id": "loc-2-3",
+   "number": 2,
+   "name": "Zlín",
+   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "stats": {
+    "slivka": -2,
+    "cider": -2
+   }
+  },
+  {
+   "id": "loc-2-4",
+   "number": 2,
+   "name": "Havířov",
+   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "stats": {
+    "jahudka": 1,
+    "rum": 2,
+    "cider": -1
+   }
+  },
+  {
+   "id": "loc-2-5",
+   "number": 2,
+   "name": "Kladno",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "jahudka": -1,
@@ -240,9 +377,9 @@
    }
   },
   {
-   "id": "loc-1-4",
-   "number": 1,
-   "name": "Lokace 1.4",
+   "id": "loc-2-6",
+   "number": 2,
+   "name": "Most",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "vino": -3,
@@ -250,9 +387,9 @@
    }
   },
   {
-   "id": "loc-1-5",
-   "number": 1,
-   "name": "Lokace 1.5",
+   "id": "loc-2-7",
+   "number": 2,
+   "name": "Opava",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "gin": -3,
@@ -261,9 +398,9 @@
    }
   },
   {
-   "id": "loc-1-6",
-   "number": 1,
-   "name": "Lokace 1.6",
+   "id": "loc-2-8",
+   "number": 2,
+   "name": "Frýdek-Místek",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "rum": 1,
@@ -271,9 +408,9 @@
    }
   },
   {
-   "id": "loc-1-7",
-   "number": 1,
-   "name": "Lokace 1.7",
+   "id": "loc-3-1",
+   "number": 3,
+   "name": "Karviná",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "vino": -1,
@@ -282,9 +419,9 @@
    }
   },
   {
-   "id": "loc-1-8",
-   "number": 1,
-   "name": "Lokace 1.8",
+   "id": "loc-3-2",
+   "number": 3,
+   "name": "Jihlava",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "rum": 2,
@@ -292,9 +429,9 @@
    }
   },
   {
-   "id": "loc-2-1",
-   "number": 2,
-   "name": "Lokace 2.1",
+   "id": "loc-3-3",
+   "number": 3,
+   "name": "Teplice",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "gin": -2,
@@ -303,9 +440,9 @@
    }
   },
   {
-   "id": "loc-2-2",
-   "number": 2,
-   "name": "Lokace 2.2",
+   "id": "loc-3-4",
+   "number": 3,
+   "name": "Děčín",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "pivo": 3,
@@ -314,9 +451,9 @@
    }
   },
   {
-   "id": "loc-2-3",
-   "number": 2,
-   "name": "Lokace 2.3",
+   "id": "loc-3-5",
+   "number": 3,
+   "name": "Karlovy Vary",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "vino": -3,
@@ -324,9 +461,9 @@
    }
   },
   {
-   "id": "loc-2-4",
-   "number": 2,
-   "name": "Lokace 2.4",
+   "id": "loc-3-6",
+   "number": 3,
+   "name": "Chomutov",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "vino": 2,
@@ -334,9 +471,9 @@
    }
   },
   {
-   "id": "loc-2-5",
-   "number": 2,
-   "name": "Lokace 2.5",
+   "id": "loc-3-7",
+   "number": 3,
+   "name": "Jablonec nad Nisou",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "jahudka": -2,
@@ -344,9 +481,9 @@
    }
   },
   {
-   "id": "loc-2-6",
-   "number": 2,
-   "name": "Lokace 2.6",
+   "id": "loc-3-8",
+   "number": 3,
+   "name": "Mladá Boleslav",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "vino": 2,
@@ -354,9 +491,9 @@
    }
   },
   {
-   "id": "loc-2-7",
-   "number": 2,
-   "name": "Lokace 2.7",
+   "id": "loc-4-1",
+   "number": 4,
+   "name": "Prostějov",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "vino": 2,
@@ -364,9 +501,9 @@
    }
   },
   {
-   "id": "loc-2-8",
-   "number": 2,
-   "name": "Lokace 2.8",
+   "id": "loc-4-2",
+   "number": 4,
+   "name": "Přerov",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "pivo": -3,
@@ -375,9 +512,9 @@
    }
   },
   {
-   "id": "loc-3-1",
-   "number": 3,
-   "name": "Lokace 3.1",
+   "id": "loc-4-3",
+   "number": 4,
+   "name": "Česká Lípa",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "gin": 2,
@@ -385,9 +522,9 @@
    }
   },
   {
-   "id": "loc-3-2",
-   "number": 3,
-   "name": "Lokace 3.2",
+   "id": "loc-4-4",
+   "number": 4,
+   "name": "Třebíč",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "jahudka": 1,
@@ -395,9 +532,9 @@
    }
   },
   {
-   "id": "loc-3-3",
-   "number": 3,
-   "name": "Lokace 3.3",
+   "id": "loc-4-5",
+   "number": 4,
+   "name": "Třinec",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "gin": 1,
@@ -406,9 +543,9 @@
    }
   },
   {
-   "id": "loc-3-4",
-   "number": 3,
-   "name": "Lokace 3.4",
+   "id": "loc-4-6",
+   "number": 4,
+   "name": "Tábor",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "jahudka": -2,
@@ -417,9 +554,9 @@
    }
   },
   {
-   "id": "loc-3-5",
-   "number": 3,
-   "name": "Lokace 3.5",
+   "id": "loc-4-7",
+   "number": 4,
+   "name": "Znojmo",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "jahudka": 1,
@@ -427,9 +564,9 @@
    }
   },
   {
-   "id": "loc-3-6",
-   "number": 3,
-   "name": "Lokace 3.6",
+   "id": "loc-4-8",
+   "number": 4,
+   "name": "Příbram",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "vino": 3,
@@ -437,9 +574,9 @@
    }
   },
   {
-   "id": "loc-3-7",
-   "number": 3,
-   "name": "Lokace 3.7",
+   "id": "loc-5-1",
+   "number": 5,
+   "name": "Cheb",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "vodka": 3,
@@ -447,9 +584,9 @@
    }
   },
   {
-   "id": "loc-3-8",
-   "number": 3,
-   "name": "Lokace 3.8",
+   "id": "loc-5-2",
+   "number": 5,
+   "name": "Kolín",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "cider": 2,
@@ -457,9 +594,9 @@
    }
   },
   {
-   "id": "loc-4-1",
-   "number": 4,
-   "name": "Lokace 4.1",
+   "id": "loc-5-3",
+   "number": 5,
+   "name": "Trutnov",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "slivka": -3,
@@ -467,9 +604,9 @@
    }
   },
   {
-   "id": "loc-4-2",
-   "number": 4,
-   "name": "Lokace 4.2",
+   "id": "loc-5-4",
+   "number": 5,
+   "name": "Písek",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "jahudka": -2,
@@ -478,9 +615,9 @@
    }
   },
   {
-   "id": "loc-4-3",
-   "number": 4,
-   "name": "Lokace 4.3",
+   "id": "loc-5-5",
+   "number": 5,
+   "name": "Kroměříž",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "vino": -3,
@@ -489,9 +626,9 @@
    }
   },
   {
-   "id": "loc-4-4",
-   "number": 4,
-   "name": "Lokace 4.4",
+   "id": "loc-5-6",
+   "number": 5,
+   "name": "Šumperk",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "jahudka": 1,
@@ -500,9 +637,9 @@
    }
   },
   {
-   "id": "loc-4-5",
-   "number": 4,
-   "name": "Lokace 4.5",
+   "id": "loc-5-7",
+   "number": 5,
+   "name": "Vsetín",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "pivo": -3,
@@ -511,9 +648,9 @@
    }
   },
   {
-   "id": "loc-4-6",
-   "number": 4,
-   "name": "Lokace 4.6",
+   "id": "loc-5-8",
+   "number": 5,
+   "name": "Valašské Meziříčí",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "vino": -3,
@@ -521,9 +658,9 @@
    }
   },
   {
-   "id": "loc-4-7",
-   "number": 4,
-   "name": "Lokace 4.7",
+   "id": "loc-6-1",
+   "number": 6,
+   "name": "Litvínov",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "pivo": -3,
@@ -532,9 +669,9 @@
    }
   },
   {
-   "id": "loc-4-8",
-   "number": 4,
-   "name": "Lokace 4.8",
+   "id": "loc-6-2",
+   "number": 6,
+   "name": "Nový Jičín",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "vino": 1,
@@ -542,9 +679,9 @@
    }
   },
   {
-   "id": "loc-5-1",
-   "number": 5,
-   "name": "Lokace 5.1",
+   "id": "loc-6-3",
+   "number": 6,
+   "name": "Uherské Hradiště",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "jahudka": -2,
@@ -553,9 +690,9 @@
    }
   },
   {
-   "id": "loc-5-2",
-   "number": 5,
-   "name": "Lokace 5.2",
+   "id": "loc-6-4",
+   "number": 6,
+   "name": "Hodonín",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "gin": 2,
@@ -563,9 +700,9 @@
    }
   },
   {
-   "id": "loc-5-3",
-   "number": 5,
-   "name": "Lokace 5.3",
+   "id": "loc-6-5",
+   "number": 6,
+   "name": "Český Těšín",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "jahudka": 2,
@@ -574,9 +711,9 @@
    }
   },
   {
-   "id": "loc-5-4",
-   "number": 5,
-   "name": "Lokace 5.4",
+   "id": "loc-6-6",
+   "number": 6,
+   "name": "Břeclav",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "vino": 1,
@@ -585,9 +722,9 @@
    }
   },
   {
-   "id": "loc-5-5",
-   "number": 5,
-   "name": "Lokace 5.5",
+   "id": "loc-6-7",
+   "number": 6,
+   "name": "Krnov",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "gin": -2,
@@ -595,9 +732,9 @@
    }
   },
   {
-   "id": "loc-5-6",
-   "number": 5,
-   "name": "Lokace 5.6",
+   "id": "loc-6-8",
+   "number": 6,
+   "name": "Litoměřice",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "rum": 3,
@@ -606,9 +743,9 @@
    }
   },
   {
-   "id": "loc-5-7",
-   "number": 5,
-   "name": "Lokace 5.7",
+   "id": "loc-7-1",
+   "number": 7,
+   "name": "Sokolov",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "pivo": 1,
@@ -617,9 +754,9 @@
    }
   },
   {
-   "id": "loc-5-8",
-   "number": 5,
-   "name": "Lokace 5.8",
+   "id": "loc-7-2",
+   "number": 7,
+   "name": "Žďár nad Sázavou",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "jahudka": 3,
@@ -628,9 +765,9 @@
    }
   },
   {
-   "id": "loc-6-1",
-   "number": 6,
-   "name": "Lokace 6.1",
+   "id": "loc-7-3",
+   "number": 7,
+   "name": "Blansko",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "vino": -2,
@@ -638,9 +775,9 @@
    }
   },
   {
-   "id": "loc-6-2",
-   "number": 6,
-   "name": "Lokace 6.2",
+   "id": "loc-7-4",
+   "number": 7,
+   "name": "Vyškov",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "gin": 3,
@@ -649,9 +786,9 @@
    }
   },
   {
-   "id": "loc-6-3",
-   "number": 6,
-   "name": "Lokace 6.3",
+   "id": "loc-7-5",
+   "number": 7,
+   "name": "Mikulov",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "pivo": 3,
@@ -660,9 +797,9 @@
    }
   },
   {
-   "id": "loc-6-4",
-   "number": 6,
-   "name": "Lokace 6.4",
+   "id": "loc-7-6",
+   "number": 7,
+   "name": "Telč",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "vino": 2,
@@ -670,9 +807,9 @@
    }
   },
   {
-   "id": "loc-6-5",
-   "number": 6,
-   "name": "Lokace 6.5",
+   "id": "loc-7-7",
+   "number": 7,
+   "name": "Český Krumlov",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "vino": -3,
@@ -680,9 +817,9 @@
    }
   },
   {
-   "id": "loc-6-6",
-   "number": 6,
-   "name": "Lokace 6.6",
+   "id": "loc-7-8",
+   "number": 7,
+   "name": "Kutná Hora",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "gin": -2,
@@ -691,9 +828,9 @@
    }
   },
   {
-   "id": "loc-6-7",
-   "number": 6,
-   "name": "Lokace 6.7",
+   "id": "loc-8-1",
+   "number": 8,
+   "name": "Slavonice",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "vino": -3,
@@ -702,9 +839,9 @@
    }
   },
   {
-   "id": "loc-6-8",
-   "number": 6,
-   "name": "Lokace 6.8",
+   "id": "loc-8-2",
+   "number": 8,
+   "name": "Lipnice nad Sázavou",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "vino": -2,
@@ -713,9 +850,9 @@
    }
   },
   {
-   "id": "loc-7-1",
-   "number": 7,
-   "name": "Lokace 7.1",
+   "id": "loc-8-3",
+   "number": 8,
+   "name": "Hrubá Skála",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "jahudka": 3,
@@ -723,9 +860,9 @@
    }
   },
   {
-   "id": "loc-7-2",
-   "number": 7,
-   "name": "Lokace 7.2",
+   "id": "loc-8-4",
+   "number": 8,
+   "name": "Horní Planá",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "jahudka": 1,
@@ -733,9 +870,9 @@
    }
   },
   {
-   "id": "loc-7-3",
-   "number": 7,
-   "name": "Lokace 7.3",
+   "id": "loc-8-5",
+   "number": 8,
+   "name": "Lhota pod Libčany",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "pivo": 2,
@@ -744,9 +881,9 @@
    }
   },
   {
-   "id": "loc-7-4",
-   "number": 7,
-   "name": "Lokace 7.4",
+   "id": "loc-8-6",
+   "number": 8,
+   "name": "Kostelec nad Orlicí",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "rum": -2,
@@ -754,9 +891,9 @@
    }
   },
   {
-   "id": "loc-7-5",
-   "number": 7,
-   "name": "Lokace 7.5",
+   "id": "loc-8-7",
+   "number": 8,
+   "name": "Dolní Lhota",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "jahudka": 3,
@@ -765,40 +902,39 @@
    }
   },
   {
-   "id": "loc-7-6",
-   "number": 7,
-   "name": "Lokace 7.6",
+   "id": "loc-8-8",
+   "number": 8,
+   "name": "Zubří",
    "description": "Zástupný popis lokace. Skutečný text přijde později.",
    "stats": {
     "jahudka": 3,
     "jager": 3
    }
-  },
+  }
+ ],
+ "existences": [
   {
-   "id": "loc-7-7",
-   "number": 7,
-   "name": "Lokace 7.7",
-   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "id": "ex-01",
+   "name": "Kámoš z hospody",
+   "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "pivo": 3,
     "rum": 2
    }
   },
   {
-   "id": "loc-7-8",
-   "number": 7,
-   "name": "Lokace 7.8",
-   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "id": "ex-02",
+   "name": "Strejda",
+   "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "vodka": 1,
     "tatran": -3
    }
   },
   {
-   "id": "loc-8-1",
-   "number": 8,
-   "name": "Lokace 8.1",
-   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "id": "ex-03",
+   "name": "Ségra",
+   "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "jahudka": 1,
     "rum": -1,
@@ -806,10 +942,9 @@
    }
   },
   {
-   "id": "loc-8-2",
-   "number": 8,
-   "name": "Lokace 8.2",
-   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "id": "ex-04",
+   "name": "Mirek Dušín",
+   "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "pivo": 3,
     "cider": -1,
@@ -817,10 +952,9 @@
    }
   },
   {
-   "id": "loc-8-3",
-   "number": 8,
-   "name": "Lokace 8.3",
-   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "id": "ex-05",
+   "name": "Bráchovec",
+   "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "slivka": -1,
     "cider": -2,
@@ -828,10 +962,9 @@
    }
   },
   {
-   "id": "loc-8-4",
-   "number": 8,
-   "name": "Lokace 8.4",
-   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "id": "ex-06",
+   "name": "Týpek",
+   "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "jahudka": 1,
     "gin": -1,
@@ -839,20 +972,18 @@
    }
   },
   {
-   "id": "loc-8-5",
-   "number": 8,
-   "name": "Lokace 8.5",
-   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "id": "ex-07",
+   "name": "Fešák",
+   "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "vino": 1,
     "jahudka": -3
    }
   },
   {
-   "id": "loc-8-6",
-   "number": 8,
-   "name": "Lokace 8.6",
-   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "id": "ex-08",
+   "name": "Šmudla",
+   "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "vino": 1,
     "cider": -2,
@@ -860,31 +991,27 @@
    }
   },
   {
-   "id": "loc-8-7",
-   "number": 8,
-   "name": "Lokace 8.7",
-   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "id": "ex-09",
+   "name": "Pepa z vedlejšího",
+   "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "slivka": 3,
     "tatran": -1
    }
   },
   {
-   "id": "loc-8-8",
-   "number": 8,
-   "name": "Lokace 8.8",
-   "description": "Zástupný popis lokace. Skutečný text přijde později.",
+   "id": "ex-10",
+   "name": "Tlusťoch",
+   "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "pivo": 3,
     "gin": 3,
     "rum": 2
    }
-  }
- ],
- "existences": [
+  },
   {
-   "id": "ex-01",
-   "name": "Existence 1",
+   "id": "ex-11",
+   "name": "Hospodský",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "gin": -1,
@@ -893,8 +1020,8 @@
    }
   },
   {
-   "id": "ex-02",
-   "name": "Existence 2",
+   "id": "ex-12",
+   "name": "Zabiják",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "tatran": 2,
@@ -902,8 +1029,8 @@
    }
   },
   {
-   "id": "ex-03",
-   "name": "Existence 3",
+   "id": "ex-13",
+   "name": "Cápek",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "pivo": -1,
@@ -912,8 +1039,8 @@
    }
   },
   {
-   "id": "ex-04",
-   "name": "Existence 4",
+   "id": "ex-14",
+   "name": "Kouzelník",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "jahudka": -1,
@@ -922,8 +1049,8 @@
    }
   },
   {
-   "id": "ex-05",
-   "name": "Existence 5",
+   "id": "ex-15",
+   "name": "Šťoural",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "vino": 1,
@@ -931,8 +1058,8 @@
    }
   },
   {
-   "id": "ex-06",
-   "name": "Existence 6",
+   "id": "ex-16",
+   "name": "Notorik",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "pivo": -2,
@@ -941,8 +1068,8 @@
    }
   },
   {
-   "id": "ex-07",
-   "name": "Existence 7",
+   "id": "ex-17",
+   "name": "Povaleč",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "pivo": 1,
@@ -950,8 +1077,8 @@
    }
   },
   {
-   "id": "ex-08",
-   "name": "Existence 8",
+   "id": "ex-18",
+   "name": "Šprt",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "vino": 2,
@@ -960,8 +1087,8 @@
    }
   },
   {
-   "id": "ex-09",
-   "name": "Existence 9",
+   "id": "ex-19",
+   "name": "Dříč",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "tatran": 1,
@@ -969,8 +1096,8 @@
    }
   },
   {
-   "id": "ex-10",
-   "name": "Existence 10",
+   "id": "ex-20",
+   "name": "Paňák",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "vino": 2,
@@ -979,8 +1106,8 @@
    }
   },
   {
-   "id": "ex-11",
-   "name": "Existence 11",
+   "id": "ex-21",
+   "name": "Zubatá",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "vodka": 3,
@@ -989,8 +1116,8 @@
    }
   },
   {
-   "id": "ex-12",
-   "name": "Existence 12",
+   "id": "ex-22",
+   "name": "Šéf",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "vino": -3,
@@ -999,8 +1126,8 @@
    }
   },
   {
-   "id": "ex-13",
-   "name": "Existence 13",
+   "id": "ex-23",
+   "name": "Kolega z práce",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "vino": 2,
@@ -1009,8 +1136,8 @@
    }
   },
   {
-   "id": "ex-14",
-   "name": "Existence 14",
+   "id": "ex-24",
+   "name": "Podnikatel",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "rum": -3,
@@ -1019,8 +1146,8 @@
    }
   },
   {
-   "id": "ex-15",
-   "name": "Existence 15",
+   "id": "ex-25",
+   "name": "Ajťák",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "jahudka": -3,
@@ -1029,8 +1156,8 @@
    }
   },
   {
-   "id": "ex-16",
-   "name": "Existence 16",
+   "id": "ex-26",
+   "name": "Lamač srdcí",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "vino": -2,
@@ -1038,8 +1165,8 @@
    }
   },
   {
-   "id": "ex-17",
-   "name": "Existence 17",
+   "id": "ex-27",
+   "name": "Kecal",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "rum": -3,
@@ -1047,8 +1174,8 @@
    }
   },
   {
-   "id": "ex-18",
-   "name": "Existence 18",
+   "id": "ex-28",
+   "name": "Ochmelka",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "rum": -3,
@@ -1056,8 +1183,8 @@
    }
   },
   {
-   "id": "ex-19",
-   "name": "Existence 19",
+   "id": "ex-29",
+   "name": "Číšník",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "vino": -1,
@@ -1066,8 +1193,8 @@
    }
   },
   {
-   "id": "ex-20",
-   "name": "Existence 20",
+   "id": "ex-30",
+   "name": "Trouba",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "pivo": 3,
@@ -1076,8 +1203,8 @@
    }
   },
   {
-   "id": "ex-21",
-   "name": "Existence 21",
+   "id": "ex-31",
+   "name": "Zlatá ručička",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "pivo": -2,
@@ -1086,8 +1213,8 @@
    }
   },
   {
-   "id": "ex-22",
-   "name": "Existence 22",
+   "id": "ex-32",
+   "name": "Pohodář",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "jahudka": -1,
@@ -1095,8 +1222,8 @@
    }
   },
   {
-   "id": "ex-23",
-   "name": "Existence 23",
+   "id": "ex-33",
+   "name": "Nespavec",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "vino": 3,
@@ -1104,8 +1231,8 @@
    }
   },
   {
-   "id": "ex-24",
-   "name": "Existence 24",
+   "id": "ex-34",
+   "name": "Rychlík",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "pivo": -2,
@@ -1113,8 +1240,8 @@
    }
   },
   {
-   "id": "ex-25",
-   "name": "Existence 25",
+   "id": "ex-35",
+   "name": "Vtipálek",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "gin": 1,
@@ -1123,8 +1250,8 @@
    }
   },
   {
-   "id": "ex-26",
-   "name": "Existence 26",
+   "id": "ex-36",
+   "name": "Dobrák",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "vodka": 1,
@@ -1132,8 +1259,8 @@
    }
   },
   {
-   "id": "ex-27",
-   "name": "Existence 27",
+   "id": "ex-37",
+   "name": "Čepák",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "jahudka": 3,
@@ -1142,8 +1269,8 @@
    }
   },
   {
-   "id": "ex-28",
-   "name": "Existence 28",
+   "id": "ex-38",
+   "name": "Sousedka",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "pivo": 1,
@@ -1152,8 +1279,8 @@
    }
   },
   {
-   "id": "ex-29",
-   "name": "Existence 29",
+   "id": "ex-39",
+   "name": "Babča",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "jahudka": 1,
@@ -1162,8 +1289,8 @@
    }
   },
   {
-   "id": "ex-30",
-   "name": "Existence 30",
+   "id": "ex-40",
+   "name": "Děda",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "rum": -1,
@@ -1171,8 +1298,8 @@
    }
   },
   {
-   "id": "ex-31",
-   "name": "Existence 31",
+   "id": "ex-41",
+   "name": "Taťka",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "vino": 3,
@@ -1180,8 +1307,8 @@
    }
   },
   {
-   "id": "ex-32",
-   "name": "Existence 32",
+   "id": "ex-42",
+   "name": "Mamča",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "vino": -3,
@@ -1190,8 +1317,8 @@
    }
   },
   {
-   "id": "ex-33",
-   "name": "Existence 33",
+   "id": "ex-43",
+   "name": "Tetka",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "jahudka": 1,
@@ -1199,8 +1326,8 @@
    }
   },
   {
-   "id": "ex-34",
-   "name": "Existence 34",
+   "id": "ex-44",
+   "name": "Kluk odvedle",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "vodka": 1,
@@ -1209,8 +1336,8 @@
    }
   },
   {
-   "id": "ex-35",
-   "name": "Existence 35",
+   "id": "ex-45",
+   "name": "Ségra z Brna",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "gin": -2,
@@ -1219,8 +1346,8 @@
    }
   },
   {
-   "id": "ex-36",
-   "name": "Existence 36",
+   "id": "ex-46",
+   "name": "Chlupáč",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "pivo": 3,
@@ -1229,8 +1356,8 @@
    }
   },
   {
-   "id": "ex-37",
-   "name": "Existence 37",
+   "id": "ex-47",
+   "name": "Lenoch",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "jahudka": 3,
@@ -1238,8 +1365,8 @@
    }
   },
   {
-   "id": "ex-38",
-   "name": "Existence 38",
+   "id": "ex-48",
+   "name": "Šplhoun",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "gin": 3,
@@ -1248,8 +1375,8 @@
    }
   },
   {
-   "id": "ex-39",
-   "name": "Existence 39",
+   "id": "ex-49",
+   "name": "Hrdina",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "cider": -1,
@@ -1257,8 +1384,8 @@
    }
   },
   {
-   "id": "ex-40",
-   "name": "Existence 40",
+   "id": "ex-50",
+   "name": "Zmatkař",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "gin": 3,
@@ -1266,8 +1393,8 @@
    }
   },
   {
-   "id": "ex-41",
-   "name": "Existence 41",
+   "id": "ex-51",
+   "name": "Kuchtík",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "rum": 1,
@@ -1275,8 +1402,8 @@
    }
   },
   {
-   "id": "ex-42",
-   "name": "Existence 42",
+   "id": "ex-52",
+   "name": "Vyvolený",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "jahudka": 3,
@@ -1284,8 +1411,8 @@
    }
   },
   {
-   "id": "ex-43",
-   "name": "Existence 43",
+   "id": "ex-53",
+   "name": "Prďoch",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "rum": -3,
@@ -1294,8 +1421,8 @@
    }
   },
   {
-   "id": "ex-44",
-   "name": "Existence 44",
+   "id": "ex-54",
+   "name": "Bumbrlíček",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "tatran": -3,
@@ -1303,8 +1430,8 @@
    }
   },
   {
-   "id": "ex-45",
-   "name": "Existence 45",
+   "id": "ex-55",
+   "name": "Drsňák",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "jahudka": -3,
@@ -1313,8 +1440,8 @@
    }
   },
   {
-   "id": "ex-46",
-   "name": "Existence 46",
+   "id": "ex-56",
+   "name": "Hubáč",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "slivka": -1,
@@ -1322,8 +1449,8 @@
    }
   },
   {
-   "id": "ex-47",
-   "name": "Existence 47",
+   "id": "ex-57",
+   "name": "Kapitán",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "jahudka": 1,
@@ -1332,8 +1459,8 @@
    }
   },
   {
-   "id": "ex-48",
-   "name": "Existence 48",
+   "id": "ex-58",
+   "name": "Fotograf",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "pivo": -3,
@@ -1342,8 +1469,8 @@
    }
   },
   {
-   "id": "ex-49",
-   "name": "Existence 49",
+   "id": "ex-59",
+   "name": "Kytarista",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "pivo": -3,
@@ -1351,8 +1478,8 @@
    }
   },
   {
-   "id": "ex-50",
-   "name": "Existence 50",
+   "id": "ex-60",
+   "name": "Opilec",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "vino": -2,
@@ -1360,8 +1487,8 @@
    }
   },
   {
-   "id": "ex-51",
-   "name": "Existence 51",
+   "id": "ex-61",
+   "name": "Rozumbrada",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "pivo": 3,
@@ -1369,8 +1496,8 @@
    }
   },
   {
-   "id": "ex-52",
-   "name": "Existence 52",
+   "id": "ex-62",
+   "name": "Šašek",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "tatran": 1,
@@ -1378,8 +1505,8 @@
    }
   },
   {
-   "id": "ex-53",
-   "name": "Existence 53",
+   "id": "ex-63",
+   "name": "Žolík",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "pivo": 3,
@@ -1388,105 +1515,13 @@
    }
   },
   {
-   "id": "ex-54",
-   "name": "Existence 54",
+   "id": "ex-64",
+   "name": "Cvok",
    "description": "Zástupný popis existence. Skutečný text přijde později.",
    "stats": {
     "pivo": -1,
     "vino": -1,
     "cider": 1
-   }
-  },
-  {
-   "id": "ex-55",
-   "name": "Existence 55",
-   "description": "Zástupný popis existence. Skutečný text přijde později.",
-   "stats": {
-    "jahudka": -3,
-    "cider": -1
-   }
-  },
-  {
-   "id": "ex-56",
-   "name": "Existence 56",
-   "description": "Zástupný popis existence. Skutečný text přijde později.",
-   "stats": {
-    "jahudka": 2,
-    "gin": -1
-   }
-  },
-  {
-   "id": "ex-57",
-   "name": "Existence 57",
-   "description": "Zástupný popis existence. Skutečný text přijde později.",
-   "stats": {
-    "jahudka": -1,
-    "vodka": -2
-   }
-  },
-  {
-   "id": "ex-58",
-   "name": "Existence 58",
-   "description": "Zástupný popis existence. Skutečný text přijde později.",
-   "stats": {
-    "vino": -2,
-    "vodka": -2
-   }
-  },
-  {
-   "id": "ex-59",
-   "name": "Existence 59",
-   "description": "Zástupný popis existence. Skutečný text přijde později.",
-   "stats": {
-    "vino": 3,
-    "rum": 2
-   }
-  },
-  {
-   "id": "ex-60",
-   "name": "Existence 60",
-   "description": "Zástupný popis existence. Skutečný text přijde později.",
-   "stats": {
-    "slivka": 3,
-    "cider": 3
-   }
-  },
-  {
-   "id": "ex-61",
-   "name": "Existence 61",
-   "description": "Zástupný popis existence. Skutečný text přijde později.",
-   "stats": {
-    "pivo": -1,
-    "gin": -2,
-    "tatran": 3
-   }
-  },
-  {
-   "id": "ex-62",
-   "name": "Existence 62",
-   "description": "Zástupný popis existence. Skutečný text přijde později.",
-   "stats": {
-    "pivo": 2,
-    "gin": -2,
-    "cider": -3
-   }
-  },
-  {
-   "id": "ex-63",
-   "name": "Existence 63",
-   "description": "Zástupný popis existence. Skutečný text přijde později.",
-   "stats": {
-    "rum": 1,
-    "cider": 2
-   }
-  },
-  {
-   "id": "ex-64",
-   "name": "Existence 64",
-   "description": "Zástupný popis existence. Skutečný text přijde později.",
-   "stats": {
-    "slivka": -3,
-    "tatran": 2
    }
   }
  ]

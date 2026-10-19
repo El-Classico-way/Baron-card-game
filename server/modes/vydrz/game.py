@@ -124,7 +124,7 @@ class VydrzGame:
         return ActionResult.success()
 
     def _deal(self) -> str:
-        deal = deal_hands(self.content, len(self._player_ids), self._shuffled)
+        deal = deal_hands(self.content, len(self._player_ids), self._shuffled, self._rng.randint)
         if isinstance(deal, str):
             return deal
         self.players = [

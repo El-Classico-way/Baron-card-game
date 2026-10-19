@@ -2,9 +2,11 @@
 """
 Generate PLACEHOLDER card data for the Výdrž mode.
 
-All names, descriptions and stat values are random stand-ins (fixed seed, so
-the output is reproducible). Replace server/modes/vydrz/data/vydrz.json with the
-real content when it exists; nothing else needs to change.
+Characters are fixed (names and zero-sum stats below). Location names come from
+server/modes/vydrz/data/mista.txt, existence names from prezdivky.txt (both temporary
+lists). Location/existence stats are random stand-ins with a fixed seed, so the output
+is reproducible. Replace server/modes/vydrz/data/vydrz.json with the real content when
+it exists; nothing else needs to change.
 
 Writes two copies of the same data:
   server/modes/vydrz/data/vydrz.json    (read by the game server)
@@ -27,10 +29,37 @@ DRINKS = [
 ]
 DRINK_IDS = [d for d, _ in DRINKS]
 
-CHARACTERS = 10
 LOCATIONS_PER_NUMBER = 8      # 8 numbers x 8 = 64; enough to deal 7 players one each
 EXISTENCES = 64               # enough to deal 8 each to 7 players
-DRINK_COPIES = 10             # drink deck: 10 cards of each kind
+DRINK_COUNT = {"mean": 20, "spread": 5}   # per game each drink kind gets mean +/- spread cards
+
+# id, name, flag, stats in the order of DRINKS (pivo vino jahudka gin rum slivka vodka cider tatran jager).
+# Every character sums to 0.
+CHARACTERS = [
+    ("stepan",      "Štěpán",       "cz", [ 2, -1,  0,  1, -2,  3, -1,  0,  1, -3]),
+    ("fanda",       "Fanda",        "cz", [ 3, -2,  1, -1,  2, -3,  0,  1, -2,  1]),
+    ("tomas",       "Tomáš",        "cz", [-1,  3,  2, -2,  0,  1, -3,  2, -1, -1]),
+    ("salek",       "Šálek",        "cz", [ 1,  0, -3,  3, -1,  2,  1, -2,  2, -3]),
+    ("jurda",       "Jurda",        "cz", [-2,  1,  3,  0,  2, -1, -2,  3, -3, -1]),
+    ("wirtak",      "Wirťák",       "cz", [ 3, -3,  0,  2, -1, -2,  3, -1,  1, -2]),
+    ("porucik-dan", "Poručík Dan",  "cz", [-3,  2, -1,  1,  3, -2,  2, -1,  0, -1]),
+    ("frodo",       "Frodo",        "cz", [ 0,  2,  3, -3,  1,  2, -2,  1, -3, -1]),
+    ("dj-quest",    "Dj. Quest",    "cz", [ 1, -1, -2,  2, -3,  0,  3,  3, -2, -1]),
+    ("miki",        "Miki",         "cz", [-1,  1,  2, -3,  1,  3, -1, -2,  2, -2]),
+    ("martin",      "Martin",       "sk", [ 2,  0, -1, -1,  3, -3,  1,  2, -1, -2]),
+]
+
+DATA_DIR = ROOT / "server" / "modes" / "vydrz" / "data"
+
+
+def read_names(filename: str, needed: int) -> list[str]:
+    lines = (DATA_DIR / filename).read_text(encoding="utf-8").splitlines()
+    names = [l.strip() for l in lines if l.strip() and not l.lstrip().startswith("#")]
+    if len(set(names)) != len(names):
+        raise SystemExit(f"{filename}: duplicate names")
+    if len(names) < needed:
+        raise SystemExit(f"{filename}: need at least {needed} names, found {len(names)}")
+    return names[:needed]
 
 
 def stat(rng: random.Random, allow_zero: bool) -> int:
@@ -46,25 +75,25 @@ def partial_stats(rng: random.Random) -> dict[str, int]:
 
 def build(seed: int = 2024) -> dict:
     rng = random.Random(seed)
+    places = read_names("mista.txt", 8 * LOCATIONS_PER_NUMBER)
+    nicknames = read_names("prezdivky.txt", EXISTENCES)
+    for cid, name, _flag, values in CHARACTERS:
+        assert len(values) == len(DRINK_IDS) and sum(values) == 0, f"{name}: stats must sum to 0"
     return {
         "pack_id": "vydrz-placeholder",
-        "version": "0.1.0",
-        "note": "Random placeholder data. Replace with real card content.",
-        "drink_copies": DRINK_COPIES,
+        "version": "0.2.0",
+        "note": "Characters are final; location/existence names are temporary lists, stats are random stand-ins.",
+        "drink_count": DRINK_COUNT,
         "drinks": [{"id": d, "name": n} for d, n in DRINKS],
         "characters": [
-            {
-                "id": f"char-{i:02d}",
-                "name": f"Postava {i}",
-                "stats": {d: stat(rng, allow_zero=True) for d in DRINK_IDS},
-            }
-            for i in range(1, CHARACTERS + 1)
+            {"id": cid, "name": name, "flag": flag, "stats": dict(zip(DRINK_IDS, values))}
+            for cid, name, flag, values in CHARACTERS
         ],
         "locations": [
             {
                 "id": f"loc-{n}-{k}",
                 "number": n,
-                "name": f"Lokace {n}.{k}",
+                "name": places[(n - 1) * LOCATIONS_PER_NUMBER + k - 1],
                 "description": "Zástupný popis lokace. Skutečný text přijde později.",
                 "stats": partial_stats(rng),
             }
@@ -74,7 +103,7 @@ def build(seed: int = 2024) -> dict:
         "existences": [
             {
                 "id": f"ex-{k:02d}",
-                "name": f"Existence {k}",
+                "name": nicknames[k - 1],
                 "description": "Zástupný popis existence. Skutečný text přijde později.",
                 "stats": partial_stats(rng),
             }

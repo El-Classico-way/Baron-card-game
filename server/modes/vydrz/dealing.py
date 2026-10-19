@@ -34,8 +34,14 @@ class Deal:
 
 
 def deal_hands(content: VydrzContent, player_count: int,
-               shuffle: Callable[[list], list]) -> Deal | str:
-    """Return the deal, or a Czech error message if the card pool is too small."""
+               shuffle: Callable[[list], list],
+               randint: Callable[[int, int], int] | None = None) -> Deal | str:
+    """
+    Return the deal, or a Czech error message if the card pool is too small.
+
+    `randint` (the caller's same seeded RNG) varies how many cards of each drink kind the
+    drink deck holds; without it every kind has exactly the mean.
+    """
     n = player_count
     characters = shuffle(content.make_characters())
     if len(characters) < n:
@@ -71,5 +77,5 @@ def deal_hands(content: VydrzContent, player_count: int,
         existences=[existences[i * EXISTENCES_DEALT:(i + 1) * EXISTENCES_DEALT] for i in range(n)],
         locations_left=locations_left,
         existences_left=len(existences) - n * EXISTENCES_DEALT,
-        drink_deck=shuffle(content.make_drinks()),
+        drink_deck=shuffle(content.make_drinks(content.drink_counts(randint))),
     )
