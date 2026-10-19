@@ -63,6 +63,7 @@ from typing import Any
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response
 from pydantic import ValidationError
 
 from networking.client import ConnectedClient
@@ -195,6 +196,19 @@ async def lifespan(app: FastAPI):
     logger.info("Game server shutting down.")
 
 
+class ClientFiles(StaticFiles):
+    """
+    The browser client. Files are always revalidated (ETag / 304 when unchanged), so after an
+    update every browser picks up the new JS and CSS at once instead of running stale cached
+    copies (ES modules are cached very eagerly, especially in Firefox and Brave).
+    """
+
+    def file_response(self, *args, **kwargs) -> Response:
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 def create_app() -> FastAPI:
     """
     Build and configure the FastAPI application.
@@ -223,7 +237,7 @@ def create_app() -> FastAPI:
 
     # Serve the browser client last so API/WebSocket routes take precedence.
     if CLIENT_DIR.is_dir():
-        app.mount("/", StaticFiles(directory=CLIENT_DIR, html=True), name="client")
+        app.mount("/", ClientFiles(directory=CLIENT_DIR, html=True), name="client")
 
     return app
 
