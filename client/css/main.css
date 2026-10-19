@@ -682,6 +682,11 @@ body.is-targeting .opponent[data-player-id]:not(.opponent--dead) {
   .inspector__nav { grid-column: 2; }
 }
 
+/* Only the older prototype table honours the OS "reduce motion" flag. Výdrž does not: its animations
+   (deal, counting, winner) are the game itself, and a global rule here silently killed them on
+   computers that have system animations switched off. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  #game-panel, #game-panel *, #game-panel *::before, #game-panel *::after {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important;
+  }
 }

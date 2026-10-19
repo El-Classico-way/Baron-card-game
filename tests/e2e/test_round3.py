@@ -359,9 +359,14 @@ def test_animations_play_even_when_the_system_asks_for_reduced_motion(browser, b
     pg.locator("#vy-existences .vy-slot").first.click()
     pg.click('[data-act="confirm"]')
     expect(pg.locator(".vr__skip")).to_be_visible(timeout=15000)               # counting runs, it is not skipped
+    pg.wait_for_selector(".vr__cell.is-hit")
+    assert pg.evaluate("parseFloat(getComputedStyle(document.querySelector('.vr__cell.is-hit')).animationDuration)") > 0.05
     pg.evaluate("void import('/js/vydrz/winner-splash.js').then(m => { m.showBaronSplash({ name: 'Alice', character: 'Frodo', isMe: true }); })")
     expect(pg.locator("#baron-splash .bs__rays")).to_be_visible()
     assert pg.evaluate("getComputedStyle(document.querySelector('.bs__rays')).animationName") != "none"
+    # no stylesheet may shrink the animations to nothing (a global reduced-motion rule once did)
+    assert pg.evaluate("parseFloat(getComputedStyle(document.querySelector('.bs__rays')).animationDuration)") > 1
+    assert pg.evaluate("getComputedStyle(document.querySelector('.bs__card')).animationDuration") != "1e-05s"
     ctx.close()
 
 

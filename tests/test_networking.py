@@ -308,3 +308,14 @@ def test_game_does_not_resolve_until_every_player_has_acted_and_a_leaver_does_no
             done = _state(a, phase="reveal")                           # the game does not wait for them forever
             assert done["last_result"]["round"] == 1
             assert any(p["away"] for p in done["players"])
+
+
+def test_client_files_are_revalidated_so_updates_are_not_hidden_by_the_cache():
+    with TestClient(app) as c:
+        for path in ("/", "/js/app.js", "/css/vydrz.css"):
+            r = c.get(path)
+            assert r.status_code == 200
+            assert r.headers["cache-control"] == "no-cache"
+            assert r.headers.get("etag")
+        etag = c.get("/js/app.js").headers["etag"]
+        assert c.get("/js/app.js", headers={"If-None-Match": etag}).status_code == 304

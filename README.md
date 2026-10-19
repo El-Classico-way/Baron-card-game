@@ -1,6 +1,7 @@
 # Baron-card-game
 
-Multiplayer online card game inspired by Bang!. See [ARCHITECTURE.md](ARCHITECTURE.md) for design rules.
+Online multiplayer karetní hra pro přátele. Server drží celý stav hry, prohlížeč jen vykresluje.
+Pravidla architektury jsou v [ARCHITECTURE.md](ARCHITECTURE.md), mapa „kam sáhnout“ v [STRUCTURE.md](STRUCTURE.md).
 
 ## Hraní s kamarády (jedno spuštění)
 
@@ -51,88 +52,89 @@ Za běhu hry:
   „Ohlásit vítěze“ (animace „je Baron!“ proběhne jednou) a nakonec může všechny vrátit
   do lobby tlačítkem „Zpět do lobby“ (jde změnit mód a hrát znovu bez nového kódu).
 
-## Setup (vývoj)
+## Vývoj
 
-    python -m venv .venv && . .venv/bin/activate
+### Příprava
+
+    python -m venv .venv
+    . .venv/bin/activate          # Windows: .venv\Scripts\activate
     pip install -r requirements-dev.txt
 
-## Run the server
+### Spuštění serveru ručně
 
     PYTHONPATH=server:. uvicorn networking.server:app --port 8000
 
-## Struktura repozitáře
+Windows (PowerShell): `$env:PYTHONPATH="server;."` a pak stejný příkaz `uvicorn …`.
+Server zároveň vydává webového klienta, takže stačí otevřít `http://localhost:8000/`.
+Soubory klienta se vždy znovu ověřují (hlavička `Cache-Control: no-cache`), po aktualizaci tedy
+prohlížeč nepoužije staré zapamatované skripty.
 
-Stručná mapa „kam sáhnout“ je v [STRUCTURE.md](STRUCTURE.md).
+### Testy
 
-## Run the tests
+    pytest tests --ignore=tests/e2e     # rychlé, bez prohlížeče
+    pytest tests/e2e                    # prohlížečové testy, pár minut
 
-    pytest
+`pytest.ini` přidává `server/` a kořen repozitáře do cesty pro importy. Prohlížečové testy
+(`tests/e2e/`) ovládají Chromium přes Playwright proti živému serveru. Potřebují
+`playwright install chromium` a bez prohlížeče se samy přeskočí.
 
-`pytest.ini` puts `server/` and the repo root on the import path.
+## Náhled rozhraní bez serveru (telefon nebo počítač)
 
-Browser tests (`tests/e2e/`) drive two Chromium tabs against a live server.
-They need Playwright's browser (`playwright install chromium`) and are
-skipped automatically when Chromium is not available. Skip them explicitly
-with `pytest --ignore=tests/e2e`.
+Klient má **ukázkový režim** (mock), který nepotřebuje herní server. Používá falešné hráče a zástupné
+karty, jen aby šlo posoudit vzhled a ovládání. Pravidla v něm nejsou autoritativní a fialový pruh
+„Ukázka“ to připomíná. Na úvodní stránce je tlačítko **Vyzkoušet ukázku**.
 
-The server also serves the browser client, so after starting it, open
-`http://localhost:8000/`.
-
-## Previewing the UI (phone or desktop)
-
-The browser client has a **mock mode** that needs no game server. It uses fake
-players and placeholder cards, only so the layout and touch interaction can be
-judged. It contains no game rules, and a purple "Demo mode" ribbon marks it.
-
-- Local, with the real server running: `http://localhost:8000/?mock=1`
-  (`?mock=table` jumps straight to the table; add `&bots=6` for a 7-player layout).
-- Single static file, any host or device:
+- Lokálně, při běžícím serveru: `http://localhost:8000/?mock=1`.
+  `?mock=table` skočí rovnou ke stolu, `&bots=6` dá rozložení pro 7 hráčů,
+  `&mode=vydrz_rucne` zvolí ruční variantu.
+- Jeden samostatný soubor na libovolný hosting:
 
       python tools/build_preview.py preview/index.html
 
-  The output is one self-contained HTML file (needs Node for the bundler).
+  Výstup je jediný HTML soubor (k sestavení je potřeba Node).
 
-### Opening the dev server on your phone
+### Server z počítače na telefonu
 
-Same Wi-Fi: start the server on all interfaces and open `http://<your-computer-ip>:8000/`.
+Ve stejné Wi-Fi: spusť server na všech rozhraních a otevři `http://<IP-počítače>:8000/`
+(nebo použij `./start.sh --lan` / `start.bat --lan`). Odjinud (HTTPS, libovolná síť):
+`start.sh` / `start.bat` vytvoří veřejný odkaz sám; ručně to umí `cloudflared tunnel --url http://localhost:8000`
+nebo `ngrok http 8000`. WebSockety fungují přes obojí.
 
-    PYTHONPATH=server:. uvicorn networking.server:app --host 0.0.0.0 --port 8000
+### Skutečný server × ukázka
 
-Elsewhere (HTTPS, any network): `cloudflared tunnel --url http://localhost:8000`
-or `ngrok http 8000` prints a public URL. WebSockets work through both.
-
-### Real vs mock
-
-| | Real | Mock |
+| | Skutečný server | Ukázka (mock) |
 |---|---|---|
-| Files | `client/js/core/socket.js` + the Python server | `client/js/mock/mock-socket.js` |
-| Cards, turns, hands | server-authoritative | fake, no rules |
-| Everything else in `client/` (store, renderer, controller, CSS) | shared by both | shared by both |
+| Spojení | `client/js/core/socket.js` + Python server | `client/js/mock/mock-socket.js` |
+| Karty, kola, ruce | rozhoduje server | falešné, bez pravidel |
+| Zbytek `client/` (stav, vykreslování, CSS) | společný | společný |
 
-## Game modes
+## Herní módy
 
-| Mode | State |
+| Mód | Stav |
 |---|---|
-| **Výdrž** | Implemented (rules below). Placeholder card data and artwork. |
-| **Řežba** | Not implemented. Shown disabled in the lobby. The older prototype engine in `server/game` is only a stand-in and is reachable through a dev hook. |
+| **Výdrž** | Hotový, ve dvou variantách: **Automaticky** (animované počítání) a **Ručně** (hráči počítají sami). |
+| **Řežba** | Zatím neimplementovaný, v lobby je vidět zablokovaný („brzy“). Starší prototyp enginu v `server/game` je jen náhrada a jde k němu jen přes vývojářský přepínač. |
 
-The host picks the mode in the lobby. Code lives in `server/modes/<mode>/`;
-the server owns all state and rules, the client only renders snapshots.
+Mód a variantu vybírá host v lobby. Kód módů je v `server/modes/<mód>/`; server vlastní stav i pravidla,
+klient jen vykresluje snímky stavu.
 
 ### Výdrž
 
-`server/modes/vydrz/` (pure Python, tested without networking):
-each player gets one character, 8 locations (one of each number 1-8) and 8
-existences, all public. Each of the 8 rounds every player secretly picks one
-location + one existence; when all have picked, 3 drink cards are drawn and a
-player's number is the sum of those drinks' stats on their character, location
-and existence. The highest total wins the round and keeps the location (its
-number is added to their score); ties are broken by drawing one drink at a
-time and counting characters only. Highest final score wins, lowest loses.
+Každý hráč dostane jednu **postavu**, 8 **lokací** (od každého čísla 1–8 jednu) a 8 **existencí**, vše veřejné.
+V každém z 8 kol hráč tajně vybere jednu lokaci a jednu existenci. Když vyberou všichni, vytáhnou se 3 karty
+chlastu a číslo hráče je součet statů těchto druhů chlastu na jeho postavě, lokaci a existenci. Nejvyšší součet
+vyhrává kolo, bere lokaci a její číslo si připíše do skóre. Remízu rozhoduje tah jednoho chlastu, počítají se jen postavy.
+Na konci vyhrává nejvyšší skóre, prohrává nejnižší (shody se řeší stejně).
 
-Card content is data: `server/modes/vydrz/data/vydrz.json`. It is currently
-random placeholder content from `python tools/generate_vydrz_data.py` (fixed
-seed). Replace the JSON with the real cards; the loader validates it.
+- **Automaticky:** počítání se animuje (rychlost v nastavení zařízení).
+- **Ručně:** všech 8 dvojic se naplánuje předem (dá se přetahovat a jde „Rozdělit náhodně“), tři chlasty se postupně
+  odhalí a hráč napíše svůj součet. Správně se započítá, nižší číslo je „Blbec“, vyšší „Švindlíř“ (−50).
+- Hra čeká, až jednají všichni. Odešlého hráče hra dohraje za něj.
+- Na konci host ohlásí vítěze („<Jméno> je Baron za postavu <Postava>!“) a může všechny vrátit do lobby.
 
-Settings (per device, in the lobby/table): sound on/off. Manual score counting
-is planned; only automatic counting with animation exists today.
+Obsah karet je data: `server/modes/vydrz/data/vydrz.json` (11 pevných postav s vlajkou, názvy lokací a existencí
+z dočasných seznamů `mista.txt` a `prezdivky.txt`, náhodné zástupné staty lokací a existencí). Generuje ho
+`python tools/generate_vydrz_data.py`; skutečné karty stačí vložit do JSON, načítač je zkontroluje.
+Počet kusů každého chlastu je na začátku každé hry náhodný (20 ± 5).
+
+Nastavení na zařízení (v lobby i u stolu): zvuk, rychlost počítání, animace rozdávání.
