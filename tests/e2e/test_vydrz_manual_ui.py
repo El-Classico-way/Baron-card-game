@@ -265,7 +265,7 @@ def test_full_manual_game_reaches_the_final_ranking(page, base_url):
     expect(page.locator(".vr__ranking li")).to_have_count(0)
     page.click('[data-act="announce"]')
     expect(page.locator("#baron-splash")).to_be_visible(timeout=10000)       # everybody sees who is the Baron
-    expect(page.locator("#baron-splash .bs__title")).to_contain_text("je Baron za postavu")
+    expect(page.locator("#baron-splash .bs__title")).to_contain_text(re.compile("(je|jsi) Baron za postavu"))
     page.click("#baron-splash .bs__btn")
     expect(page.locator("#baron-splash")).to_be_hidden()
     expect(page.locator(".vr__ranking li")).to_have_count(2)
@@ -316,7 +316,8 @@ def test_two_browsers_play_a_manual_round_on_the_real_server(browser, base_url):
         expect(pg.locator(".vm-banner")).to_contain_text("výsledek", timeout=8000)
         expect(pg.locator(".vm-row", has_text="Alice").locator(".vm-tag--svindlir")).to_be_visible()
         expect(pg.locator(".vm-row", has_text="Bob").locator(".vm-tag--blbec")).to_be_visible()
-    expect(alice.locator(".vr__outcome")).to_contain_text("Alice")        # -50 beats -99
+    expect(alice.locator(".vr__outcome")).to_contain_text("Ty bereš lokaci")      # -50 beats -99; the winner is addressed directly
+    expect(bob.locator(".vr__outcome")).to_contain_text("Alice bere lokaci")
     expect(bob.locator(".vr__waiting")).to_be_visible()                    # only the host continues
     alice.click('[data-act="next"]')
     for pg in (alice, bob):

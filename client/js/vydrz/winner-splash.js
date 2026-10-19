@@ -1,7 +1,7 @@
 /**
  * client/js/vydrz/winner-splash.js
  *
- * End-of-game announcement shown to every player: "<Jméno> je Baron!".
+ * End-of-game announcement shown to every player: "<Jméno> je Baron za postavu <Postava>!" (the winner sees "Ty jsi Baron …").
  * Presentation only; the winner comes from the server's final result.
  * Tap, Enter or Escape continues; it also closes itself after a while.
  */
@@ -27,7 +27,7 @@ export function showBaronSplash({ name, character = null, isMe = false }) {
       <div class="bs__confetti" aria-hidden="true">${confetti}</div>
       <div class="bs__card">
         <div class="bs__crown" aria-hidden="true">♛</div>
-        ${name ? `<h2 class="bs__title"><span class="bs__name">${esc(name)}</span> je Baron${character ? ` za postavu <span class="bs__char">${esc(character)}</span>` : ""}!</h2>
+        ${name ? `<h2 class="bs__title"><span class="bs__name">${isMe ? "Ty" : esc(name)}</span> ${isMe ? "jsi" : "je"} Baron${character ? ` za postavu <span class="bs__char">${esc(character)}</span>` : ""}!</h2>
                   ${isMe ? `<p class="bs__sub">Gratulujeme, vyhrál jsi!</p>` : ""}`
                : `<h2 class="bs__title">Dnes žádný Baron</h2><p class="bs__sub">Remíza se nepodařilo rozhodnout.</p>`}
         <button class="btn bs__btn" type="button">Pokračovat</button>
