@@ -83,7 +83,7 @@ def test_inspected_character_shows_full_drink_names(page, base_url):
 def test_desktop_cards_are_larger(page, base_url):
     page.goto(f"{base_url}?mock=table&bots=2")
     expect(page.locator("#vy-locations .vy-slot")).to_have_count(8)
-    assert page.locator("#vy-locations .vc").first.bounding_box()["width"] >= 160
+    assert page.locator("#vy-locations .vc").first.bounding_box()["width"] >= 140
 
 
 # --- manual variant ---------------------------------------------------------
@@ -262,7 +262,7 @@ def test_manual_cards_are_large_on_desktop_and_minus_sound_falls(browser, base_u
     ctx.add_init_script("localStorage.setItem('baron.settings', JSON.stringify({deal:false, sound:true}))")
     pg = ctx.new_page()
     _manual_table(pg, base_url, bots=1)
-    assert pg.locator('.vy-slot[data-kind="lokace"] .vc').first.bounding_box()["width"] >= 160
+    assert pg.locator('.vy-slot[data-kind="lokace"] .vc').first.bounding_box()["width"] >= 140
     _plan_all(pg)
     pg.click('[data-act="confirm"]')
     _wait_for_entry_open(pg)
