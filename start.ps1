@@ -20,27 +20,38 @@ function Info($t) { Write-Host "  $t" }
 function Die($t)  { Write-Host "`nChyba: $t" -ForegroundColor Red; exit 1 }
 
 # ---- 1) Python + virtualni prostredi -------------------------------------------
+# Kazdeho kandidata se zeptame na cestu ke skutecnemu python.exe. Stdin je prazdny
+# ($null |), takze kdyby se misto skriptu otevrel interaktivni Python (>>>), hned
+# skonci a zkusi se dalsi kandidat. Dal uz se pouziva jen nalezena plna cesta.
+$code = "import sys; print(sys.executable if sys.version_info >= (3, 10) else '')"
 $py = $null
-foreach ($c in @("py", "python", "python3")) {
-  if (Get-Command $c -ErrorAction SilentlyContinue) { $py = $c; break }
+foreach ($c in @("python", "py", "python3")) {
+  if (-not (Get-Command $c -ErrorAction SilentlyContinue)) { continue }
+  $out = $null
+  try {
+    $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+    if ($c -eq "py") { $out = $null | & $c -3 -c $code 2>$null }
+    else             { $out = $null | & $c -c $code 2>$null }
+  } catch { $out = $null } finally { $ErrorActionPreference = $prev }
+  $exe = ($out | Where-Object { $_ } | Select-Object -Last 1)
+  if ($exe) { $exe = "$exe".Trim() }
+  if ($exe -and (Test-Path $exe)) { $py = $exe; break }
 }
 if (-not $py) { Die "Chybi Python 3.10+. Nainstaluj ho z https://www.python.org (zaskrtni 'Add python.exe to PATH') a spust skript znovu." }
-$pyArgs = if ($py -eq "py") { @("-3") } else { @() }
-& $py @pyArgs -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)"
-if ($LASTEXITCODE -ne 0) { Die "Potrebuju Python 3.10 nebo novejsi." }
+Info "Python: $py"
 
 $venvPy = Join-Path $Root ".venv\Scripts\python.exe"
 if (-not (Test-Path $venvPy)) {
   Say "Pripravuji Python prostredi (jen poprve, chvili to trva)..."
-  & $py @pyArgs -m venv .venv
-  if ($LASTEXITCODE -ne 0) { Die "Nepodarilo se vytvorit .venv." }
+  $null | & $py -m venv .venv
+  if ($LASTEXITCODE -ne 0 -or -not (Test-Path $venvPy)) { Die "Nepodarilo se vytvorit .venv." }
 }
 $stamp = Join-Path $Root ".venv\.requirements-stamp"
 $req = Join-Path $Root "requirements.txt"
 if (-not (Test-Path $stamp) -or (Get-Item $req).LastWriteTime -gt (Get-Item $stamp).LastWriteTime) {
   Say "Instaluji zavislosti..."
-  & $venvPy -m pip install --quiet --upgrade pip
-  & $venvPy -m pip install --quiet -r requirements.txt
+  $null | & $venvPy -m pip install --quiet --upgrade pip
+  $null | & $venvPy -m pip install --quiet -r requirements.txt
   if ($LASTEXITCODE -ne 0) { Die "Instalace zavislosti selhala." }
   New-Item -ItemType File -Force $stamp | Out-Null
 }
