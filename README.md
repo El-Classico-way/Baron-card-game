@@ -4,22 +4,42 @@ Multiplayer online card game inspired by Bang!. See [ARCHITECTURE.md](ARCHITECTU
 
 ## Hraní s kamarády (jedno spuštění)
 
-Pro toho, kdo pouští server (stačí Linux, macOS nebo WSL a Python 3.10+):
+Hru pouští jeden člověk (hostitel) na svém počítači. Ostatní hráči nic neinstalují, jen otevřou odkaz
+v prohlížeči (telefon i počítač) a napíšou jméno. Hostem hry je ten, kdo založí místnost.
 
-    ./start.sh
+### Co potřebuješ
 
-Skript sám připraví Python prostředí a závislosti (poprvé to chvíli trvá), spustí
-server a vypíše **odkaz pro ostatní**. Odkaz funguje z libovolné sítě: skript
-otevře bezplatný „quick tunnel“ přes `cloudflared` (stáhne se jednorázově do
-`.bin/`, účet není potřeba). Kamarádi odkaz jen otevřou v prohlížeči a napíšou
-jméno. Hostem hry je ten, kdo založí místnost. Konec přes Ctrl+C.
+- **Python 3.10 nebo novější** ([python.org](https://www.python.org/downloads/)). Na Windows při instalaci
+  zaškrtni **„Add python.exe to PATH“**.
+- Připojení k internetu při prvním spuštění (stáhnou se závislosti a nástroj `cloudflared` pro veřejný odkaz).
 
-- **Windows:** nainstaluj Python 3.10+ (https://www.python.org, zaškrtni „Add python.exe to PATH“) a
-  spusť `start.bat` (dvojklikem nebo z příkazové řádky). Dělá totéž co `start.sh`, parametr `--lan`
-  i proměnná `PORT` fungují stejně. Skript jsem na Windows nemohl vyzkoušet, jen napsat podle `start.sh`.
-- `./start.sh --lan` jen místní síť, nic se nestahuje (hráči jdou na `http://<IP>:8000`).
-- `PORT=9000 ./start.sh` jiný port.
-- Odkaz je veřejný, kdo ho má, může hrát. Po skončení se zruší spolu se serverem.
+### Spuštění
+
+| Systém | Jak |
+|---|---|
+| **Windows** | dvojklik na `start.bat` (nebo v příkazové řádce ve složce hry: `start.bat`) |
+| **Linux / macOS / WSL** | v terminálu ve složce hry: `./start.sh` |
+
+Při prvním spuštění skript sám vytvoří složku `.venv` s Pythonem a nainstaluje závislosti (chvíli to trvá),
+spustí server a vypíše **odkaz pro ostatní**. Odkaz funguje z libovolné sítě: skript otevře bezplatný
+„quick tunnel“ přes `cloudflared` (stáhne se jednorázově do `.bin/`, účet není potřeba). Hostitel se připojí
+na `http://localhost:8000`, kamarádi na vypsaný odkaz. Konec: **Ctrl+C** (nebo zavři okno).
+
+### Možnosti
+
+| Co | Windows | Linux / macOS |
+|---|---|---|
+| jen místní síť, nic se nestahuje (hráči jdou na `http://<IP>:8000`) | `start.bat --lan` | `./start.sh --lan` |
+| jiný port (výchozí 8000) | `set PORT=9000` a pak `start.bat` | `PORT=9000 ./start.sh` |
+
+### Když něco nejde
+
+- **Windows: „Chybí Python 3.10+“** – nainstaluj Python s PATH (viz výše), zavři a znovu otevři okno a spusť znovu.
+  Na Windows může Defender nebo firewall při prvním spuštění chtít povolení; povol ho pro soukromé sítě.
+- **„Port 8000 je už obsazený“** – spusť s jiným portem (tabulka výše).
+- **Veřejný odkaz se nevytvořil** – hostitel i hráči ve stejné síti můžou hrát přes `--lan`; jinak zkontroluj internet
+  nebo nainstaluj `cloudflared` ručně ([návod](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)).
+- Odkaz je veřejný, kdo ho má, může hrát. Po ukončení skriptu přestane fungovat.
 
 Za běhu hry:
 

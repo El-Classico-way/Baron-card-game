@@ -15,7 +15,7 @@ import {
 } from "./cards.js";
 import { pilesHtml, onPileClick } from "./piles.js";
 import { ResultOverlay } from "./result-overlay.js";
-import { getSettings, updateSettings, SPEED_LABELS } from "./settings.js";
+import { getSettings, updateSettings, SPEED_LABELS, systemReducesMotion } from "./settings.js";
 import * as sfx from "./sound.js";
 
 const LONG_PRESS_MS = 450;
@@ -425,6 +425,7 @@ export class VydrzView {
         <h3>Rychlost automatického počítání</h3>
         <div class="seg seg--wrap">${speeds}</div>
         <p class="vs__note vs__note--dim">Platí jen pro režim Výdrž (automaticky). Nastavení je jen na tomto zařízení.</p>
+        ${systemReducesMotion() ? `<p class="vs__note">Systém hlásí omezené animace (třeba kvůli úspoře baterie). Hra je přesto přehrává; počítání jde přeskočit tlačítkem „Přeskočit“ a rozdávání vypnout níže.</p>` : ""}
         <h3>Zvuk</h3>
         <div class="seg"><button class="seg__btn${st.sound ? " is-on" : ""}" data-set-sound="on" type="button">Zapnutý</button>
           <button class="seg__btn${st.sound ? "" : " is-on"}" data-set-sound="off" type="button">Vypnutý</button></div>

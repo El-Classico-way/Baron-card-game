@@ -341,3 +341,65 @@ def test_winner_text_names_the_character(page, base_url):
     expect(page.locator("#vydrz-panel")).to_be_visible(timeout=8000)
     page.evaluate("void import('/js/vydrz/winner-splash.js').then(m => { m.showBaronSplash({ name: 'Alice', character: 'Poručík Dan', isMe: false }); })")
     expect(page.locator("#baron-splash .bs__title")).to_have_text("Alice je Baron za postavu Poručík Dan!")
+
+
+# ---------------------------------------------------------------------------
+# Round 6: animations vs. OS "reduce motion", compact flag/title, one-row hand, inspector height
+# ---------------------------------------------------------------------------
+
+def test_animations_play_even_when_the_system_asks_for_reduced_motion(browser, base_url):
+    ctx = browser.new_context(viewport={"width": 1366, "height": 800}, reduced_motion="reduce")
+    ctx.add_init_script("localStorage.setItem('baron.settings', JSON.stringify({deal: true}))")
+    pg = ctx.new_page()
+    pg.goto(f"{base_url}?mock=table&bots=2")
+    expect(pg.locator("#deal-intro")).to_be_visible(timeout=8000)             # the opening deal is played
+    pg.click("#deal-intro .di__skip") if pg.locator("#deal-intro .di__skip").count() else None
+    expect(pg.locator("#vy-locations .vy-slot")).to_have_count(8, timeout=20000)
+    pg.locator("#vy-locations .vy-slot").first.click()
+    pg.locator("#vy-existences .vy-slot").first.click()
+    pg.click('[data-act="confirm"]')
+    expect(pg.locator(".vr__skip")).to_be_visible(timeout=15000)               # counting runs, it is not skipped
+    pg.evaluate("void import('/js/vydrz/winner-splash.js').then(m => { m.showBaronSplash({ name: 'Alice', character: 'Frodo', isMe: true }); })")
+    expect(pg.locator("#baron-splash .bs__rays")).to_be_visible()
+    assert pg.evaluate("getComputedStyle(document.querySelector('.bs__rays')).animationName") != "none"
+    ctx.close()
+
+
+def test_character_title_stays_on_one_line_beside_a_small_flag(page, base_url):
+    page.goto(f"{base_url}?mock=table&bots=2")
+    expect(page.locator("#vy-me .vc--postava")).to_be_visible(timeout=8000)
+    for name in ("Poručík Dan", "Dj. Quest", "Wirťák", "Štěpán"):
+        page.evaluate("""(n) => { document.querySelector('#vy-me .vc__title').textContent = n; }""", name)
+        h = page.evaluate("(() => { const t = document.querySelector('#vy-me .vc__title'); const r = t.getBoundingClientRect(); return [r.height, parseFloat(getComputedStyle(t).fontSize), t.scrollWidth - t.clientWidth]; })()")
+        assert h[0] < h[1] * 2.3, f"{name} wrapped: {h}"                      # one line (line-height + padding)
+        assert h[2] <= 1, f"{name} overflows: {h}"
+    card = page.locator("#vy-me .vc--postava").bounding_box()
+    flag = page.locator("#vy-me .vc__flag").bounding_box()
+    assert flag["width"] < card["width"] * 0.17                               # smaller than before (was 21 %)
+
+
+def test_eight_cards_fit_in_one_row_on_desktop(page, base_url):
+    page.goto(f"{base_url}?mock=table&bots=2")
+    expect(page.locator("#vy-locations .vy-slot")).to_have_count(8)
+    for sel in ("#vy-locations", "#vy-existences"):
+        boxes = [page.locator(f"{sel} .vy-slot").nth(i).bounding_box() for i in range(8)]
+        assert len({round(b["y"]) for b in boxes}) == 1, "cards wrap onto several rows"
+        assert boxes[-1]["x"] + boxes[-1]["width"] <= 1280 + 1
+        assert boxes[0]["x"] >= 0
+    assert page.locator("#vy-locations .vc").first.bounding_box()["width"] >= 120   # still large
+
+
+def test_inspector_fits_the_window_without_scrolling(browser, base_url):
+    ctx = browser.new_context(viewport={"width": 1366, "height": 768})
+    pg = ctx.new_page()
+    pg.goto(f"{base_url}?mock=table&bots=2")
+    expect(pg.locator("#vy-locations .vy-slot")).to_have_count(8, timeout=8000)
+    pg.locator("#vy-locations .vy-slot").first.click()
+    pg.locator("#vy-locations .vy-inspect").click()                          # several cards: there are Back / Next buttons
+    expect(pg.locator("#card-inspector")).to_be_visible()
+    sheet = pg.locator(".inspector__sheet")
+    box = sheet.bounding_box()
+    assert box["y"] >= 0 and box["y"] + box["height"] <= 768
+    assert pg.evaluate("(s => s.scrollHeight <= s.clientHeight + 1)(document.querySelector('.inspector__sheet'))")
+    expect(pg.locator(".inspector__nav .btn").last).to_be_in_viewport()      # the Next button is visible at once
+    ctx.close()

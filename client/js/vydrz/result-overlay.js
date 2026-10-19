@@ -10,7 +10,7 @@
  * payload (VydrzGame._resolve_round). This file adds animation and never
  * computes who wins.
  *
- * Skipping: the "Přeskočit" button (and prefers-reduced-motion) jumps to the
+ * Skipping: the "Přeskočit" button jumps to the
  * final state, which is rendered by the same code with zero delays.
  */
 
@@ -69,7 +69,7 @@ export class ResultOverlay {
     this._pending = null;
     this._sfx = animate ? realSfx : QUIET;
     const sfx = this._sfx;
-    this._skip = !animate || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    this._skip = !animate;
     this._build(result, ctx);
     this._root.classList.toggle("is-static", !animate);
     this._root.hidden = false;
