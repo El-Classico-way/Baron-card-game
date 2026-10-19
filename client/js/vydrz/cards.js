@@ -70,11 +70,13 @@ function flagBadge(flag) {
   return FLAGS[flag] ? `<span class="vc__flag" data-flag="${attr(flag)}" aria-hidden="true"><svg viewBox="0 0 30 30" preserveAspectRatio="xMidYMid slice">${FLAGS[flag]}</svg></span>` : "";
 }
 
+/** Shrink long names (e.g. "Poručík Dan") so the title stays on one line next to the flag. */
+const titleFit = (name) => Math.min(1, 9 / Math.max(String(name).length, 1) / 0.95).toFixed(2);
+
 export function characterFront(card, opts = {}) {
   const stats = Object.entries(card.stats).map(([d, v]) => statChip(d, v, { short: !/vc--big/.test(opts.extra ?? "") })).join("");
   return face("postava", card, `
-    ${flagBadge(card.flag)}
-    <div class="vc__title">${esc(card.name)}</div>
+    <div class="vc__titlebar"><div class="vc__title" style="--fit:${titleFit(card.name)}">${esc(card.name)}</div>${flagBadge(card.flag)}</div>
     <div class="vc__photo" aria-hidden="true"><span class="vc__photo-mark">${esc(initials(card.name))}</span></div>
     <div class="vc__stats vc__stats--10">${stats}</div>`, opts);
 }

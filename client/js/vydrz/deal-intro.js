@@ -57,7 +57,7 @@ export class DealIntro {
    */
   async play({ character, getCharSlot, onLandChar, pairs, counts, getSlot, onLand, prepare }) {
     const token = ++this._token;
-    this._skip = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    this._skip = false;      // the OS "reduce motion" flag is deliberately not used: these animations are the game itself (see settings)
     const landAll = () => { onLandChar?.(); pairs.forEach(p => { onLand(p.lokace.uid); onLand(p.existence.uid); }); };
     if (this._skip) { landAll(); return; }
 

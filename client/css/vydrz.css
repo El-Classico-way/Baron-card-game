@@ -315,9 +315,6 @@
   .vc--hand { --vc-w: 100px; }
   .vr__panel { max-width: 760px; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .bump-pos, .bump-neg, .vr__cell.is-hit, .vr__slot.is-flipped .vc { animation: none !important; }
-}
 
 
 /* ---------- 5. Výdrž (ruční): planning, counting, number pad -------- */
@@ -463,7 +460,6 @@
   .di__piles { display: none; }
   .di__spot { width: min(22vw, 120px); }
 }
-@media (prefers-reduced-motion: reduce) { .di__inner { transition: none; } }
 
 /* Character in the manual planning stage; in-page confirm dialog; static preview */
 .vm-me { display: flex; gap: 14px; align-items: center; padding: 0 12px; }
@@ -501,7 +497,6 @@ body.static-preview #join-form { display: none; }
 .bs__name { color: var(--gold-light); text-shadow: 0 0 .5em rgba(224, 176, 76, .6); }
 .bs__sub { color: var(--text-dim); font-size: 1.1rem; }
 .bs__btn { margin-top: 10px; min-width: 200px; }
-@media (prefers-reduced-motion: reduce) { .bs__rays, .bs__bit, .bs__crown { animation: none; } .bs__card { animation: none; } }
 
 /* Reopened result (✕ and back): show the end state at once, no motion. */
 .is-static *, .is-static *::before, .is-static *::after { animation: none !important; transition: none !important; }
@@ -544,9 +539,18 @@ body.static-preview #join-form { display: none; }
   .vm-char .vc { --vc-w: 200px; }
 }
 
-/* Country flag: a filled circle in the top-right corner of a character card */
-.vc--postava { position: relative; }
-.vc__flag { position: absolute; top: .45em; right: .45em; width: 2.1em; height: 2.1em; border-radius: 50%; overflow: hidden; border: .09em solid rgba(0, 0, 0, .35); box-shadow: 0 .05em .2em rgba(0, 0, 0, .35); z-index: 1; display: block; }
+/* Country flag: a small filled circle at the end of the title row of a character card */
+.vc__titlebar { display: flex; align-items: center; gap: .4em; padding: 0 .45em 0 .2em; background: color-mix(in srgb, var(--vc-postava) 14%, transparent); }
+.vc__titlebar .vc__title { flex: 1; min-width: 0; background: none; padding: .45em .2em .25em; white-space: nowrap; overflow: hidden; font-size: calc(1.15em * var(--fit, 1)); }
+.vc__flag { flex: none; width: 1.55em; height: 1.55em; border-radius: 50%; overflow: hidden; border: .08em solid rgba(0, 0, 0, .35); box-shadow: 0 .05em .15em rgba(0, 0, 0, .3); display: block; }
 .vc__flag svg { width: 100%; height: 100%; display: block; }
-.vc--postava .vc__title { padding-inline: 2.9em; }
 .bs__char { color: var(--gold-light); }
+
+/* --- Desktop: eight cards in one row, smaller inspector -------------------- */
+@media (min-width: 900px) {
+  .vy-scroll, #vm-panel .vy-scroll { padding-inline: max(0px, calc((100% - 1480px) / 2)); }
+  .vc--hand { --vc-w: clamp(104px, calc((min(100vw, 1480px) - 110px) / 8), 172px); }
+  .vy-hand { flex-wrap: nowrap; justify-content: center; overflow-x: visible; }
+  /* the inspector's card is sized so the sheet, with its Back/Next buttons, fits the window height */
+  .vc--big, .inspector__card--custom .vc--big { --vc-w: min(36vw, 380px, calc((100dvh - 300px) / 1.4)); }
+}

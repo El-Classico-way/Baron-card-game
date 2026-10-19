@@ -32,7 +32,6 @@ const NUMPAD_ICON = `<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden
   [4, 12, 20].flatMap(y => [4, 12, 20].map(x => `<circle cx="${x}" cy="${y}" r="2.1"/>`)).join("")}</svg>`;
 const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const signed = (n) => (n < 0 ? `−${Math.abs(n)}` : String(n));
-const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 export class ManualView {
   /** @param {{ socket, inspector, numpad, dealIntro, getHostId, onLeave, onConfirmLeave, openSettings }} deps */
@@ -546,7 +545,6 @@ export class ManualView {
     if (!c || this._state.phase !== "calculating") return;
     if ((this._revealed[c.draw_id] ?? 0) >= c.drinks.length || this._revealing) return;
     const drawId = c.draw_id;
-    if (reducedMotion()) { this._revealed[drawId] = c.drinks.length; this.render(); return; }
     this._revealing = true;
     this.render();
     for (let i = 1; i <= c.drinks.length; i++) {

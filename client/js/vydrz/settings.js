@@ -30,3 +30,10 @@ export function updateSettings(patch) {
   try { localStorage.setItem(KEY, JSON.stringify(cache)); } catch { /* ignore */ }
   return cache;
 }
+
+/**
+ * True when the operating system asks for reduced motion (Windows "animation effects" off,
+ * often switched on by battery saver). The game's own animations do not follow it, because
+ * they are the game; the settings sheet tells the player about it instead.
+ */
+export const systemReducesMotion = () => !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
