@@ -62,6 +62,17 @@ def _enter(page, value):
     expect(page.locator(".np__panel")).to_have_count(0)      # (the last player's table moves on to the result at once)
 
 
+def _settle(page):
+    """Wait for the round's result; a tie-break asks for another number, which is typed correctly."""
+    for _ in range(12):
+        page.wait_for_function(
+            "document.querySelector('[data-act=\"next\"]') || document.querySelector('[data-submit]:not([disabled])')", timeout=20000)
+        if page.locator('[data-act="next"]').count():
+            return
+        _enter(page, _correct(page))
+    raise AssertionError("round never settled")
+
+
 def _no_hscroll(page):
     assert page.evaluate("document.documentElement.scrollWidth - window.innerWidth") <= 0
 
@@ -183,7 +194,7 @@ def test_correct_low_and_high_entries_show_the_right_tags(page, base_url):
     expect(page.locator("[data-submit]")).to_have_text("Odesláno")
     expect(page.locator("[data-submit]")).to_be_disabled()                 # one entry only
     expect(page.locator('[data-step="1"]')).to_be_disabled()
-    expect(page.locator("#vm-bar button[data-act='next']")).to_be_visible(timeout=20000)
+    _settle(page)
     expect(page.locator(".vm-row.is-winner, .vr__outcome").first).to_be_visible()
     expect(page.locator(".vm-row__right").first).to_contain_text("správně")   # the right numbers are shown afterwards
     page.click('[data-act="next"]')
@@ -195,7 +206,7 @@ def test_correct_low_and_high_entries_show_the_right_tags(page, base_url):
     row = page.locator(".vm-row", has_text="Ty")
     expect(row.locator(".vm-tag--svindlir")).to_have_text("Švindlíř")
     expect(row.locator(".vm-row__val")).to_have_text("\u221250")
-    expect(page.locator('[data-act="next"]')).to_be_visible(timeout=20000)
+    _settle(page)
     page.click('[data-act="next"]')
 
     # Round 3: exactly right -> no tag, the plain number.
