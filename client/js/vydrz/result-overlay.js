@@ -324,7 +324,8 @@ export class ResultOverlay {
     out.hidden = false;
     if (w) {
       const loc = result.picks[w].lokace;
-      out.innerHTML = `<b>${esc(ctx.names[w] ?? w)}</b> bere lokaci <b>${esc(loc.name)}</b> a získává <b class="vr__plus">+${result.awarded}</b> b.`;
+      const me = w === ctx.myId;           // the winner is addressed directly: "Ty bereš … a získáváš"
+      out.innerHTML = `<b>${me ? "Ty" : esc(ctx.names[w] ?? w)}</b> ${me ? "bereš" : "bere"} lokaci <b>${esc(loc.name)}</b> a ${me ? "získáváš" : "získává"} <b class="vr__plus">+${result.awarded}</b> b.`;
       this._sfx.fanfare();
     } else {
       out.textContent = "Remíza se nepodařilo rozhodnout. Lokaci nikdo nezíská.";

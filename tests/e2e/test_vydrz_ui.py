@@ -1,5 +1,6 @@
 """Výdrž UI: mode switch, table layout, picking, result overlay, full mock game,
 and two real browsers playing a round through the server."""
+import re
 import pytest
 from playwright.sync_api import expect
 
@@ -154,7 +155,7 @@ def test_full_mock_game_to_the_end(page, base_url):
     page.click(".vr__announce")
     expect(page.locator("#baron-splash")).to_be_visible(timeout=10000)        # "<Jméno> je Baron!" for everyone
     winner = page.locator("#baron-splash .bs__name").inner_text()
-    expect(page.locator("#baron-splash .bs__title")).to_contain_text("je Baron za postavu")
+    expect(page.locator("#baron-splash .bs__title")).to_contain_text(re.compile("(je|jsi) Baron za postavu"))
     page.keyboard.press("Enter")
     expect(page.locator("#baron-splash")).to_be_hidden()
     expect(page.locator(".vr__final")).to_be_visible()

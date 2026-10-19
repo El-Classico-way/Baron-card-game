@@ -408,3 +408,43 @@ def test_inspector_fits_the_window_without_scrolling(browser, base_url):
     assert pg.evaluate("(s => s.scrollHeight <= s.clientHeight + 1)(document.querySelector('.inspector__sheet'))")
     expect(pg.locator(".inspector__nav .btn").last).to_be_in_viewport()      # the Next button is visible at once
     ctx.close()
+
+
+# ---------------------------------------------------------------------------
+# The winner is addressed directly ("Ty bereš", "Ty jsi Baron")
+# ---------------------------------------------------------------------------
+
+def test_winner_text_is_second_person_for_the_winner_only(page, base_url):
+    page.goto(f"{base_url}?mock=table&bots=2")
+    expect(page.locator("#vydrz-panel")).to_be_visible(timeout=8000)
+    page.evaluate("void import('/js/vydrz/winner-splash.js').then(m => { m.showBaronSplash({ name: 'Alice', character: 'Frodo', isMe: true }); })")
+    expect(page.locator("#baron-splash .bs__title")).to_have_text("Ty jsi Baron za postavu Frodo!")
+    page.keyboard.press("Enter")
+    page.evaluate("void import('/js/vydrz/winner-splash.js').then(m => { m.showBaronSplash({ name: 'Alice', character: 'Frodo', isMe: false }); })")
+    expect(page.locator("#baron-splash .bs__title")).to_have_text("Alice je Baron za postavu Frodo!")
+
+
+def test_round_outcome_says_you_take_the_location_when_you_won(page, base_url):
+    page.goto(f"{base_url}?mock=table&bots=2")
+    expect(page.locator("#vydrz-panel")).to_be_visible(timeout=8000)
+    texts = page.evaluate("""async () => {
+        const { ResultOverlay } = await import('/js/vydrz/result-overlay.js');
+        const card = (name) => ({ name, number: 3, stats: { pivo: 1, gin: 1 } });
+        const result = {
+          round: 1, drawn: [], totals: { me: 5, bot: 3 }, tiebreak: [], winner_id: 'me', awarded: 3, final: null,
+          picks: { me: { lokace: card('Praha'), existence: card('Strejda') }, bot: { lokace: card('Brno'), existence: card('Šéf') } },
+          scores_before: { me: 0, bot: 0 }, scores_after: { me: 3, bot: 0 },
+        };
+        const out = [];
+        for (const myId of ['me', 'bot2']) {
+          const root = document.createElement('div');
+          document.body.appendChild(root);
+          const ov = new ResultOverlay(root, { onNext() {}, onLeave() {} });
+          await ov.open(result, { names: { me: 'Alice', bot: 'Bruno' }, isHost: false, myId, characters: {} }, { animate: false });
+          out.push(root.querySelector('.vr__outcome').textContent);
+          root.remove();
+        }
+        return out;
+    }""")
+    assert texts[0] == "Ty bereš lokaci Praha a získáváš +3 b."
+    assert texts[1] == "Alice bere lokaci Praha a získává +3 b."

@@ -1,4 +1,5 @@
 """Reconnecting, returning to a seen result, announcing the winner, back to the lobby, desktop scrolling."""
+import re
 import pytest
 from playwright.sync_api import expect
 
@@ -68,7 +69,7 @@ def test_host_announces_then_everyone_sees_the_baron_once_and_can_return_to_the_
     expect(page.locator("#baron-splash")).to_be_hidden()
     expect(page.locator(".vr__final")).to_be_hidden()
     page.click(".vr__announce")
-    expect(page.locator("#baron-splash .bs__title")).to_contain_text("je Baron za postavu", timeout=8000)
+    expect(page.locator("#baron-splash .bs__title")).to_contain_text(re.compile("(je|jsi) Baron za postavu"), timeout=8000)
     page.keyboard.press("Enter")
     expect(page.locator(".vr__ranking li")).to_have_count(3)
 

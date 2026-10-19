@@ -672,8 +672,9 @@ export class ManualView {
     const r = this._state.last_result;
     if (!r) return "";
     const names = this._names();
+    const me = r.winner_id === this._state.you;
     const win = r.winner_id
-      ? `<b>${esc(names[r.winner_id])}</b> bere lokaci <b>${esc(r.picks[r.winner_id].lokace.name)}</b> a získává <b class="vr__plus">+${r.awarded}</b> b.`
+      ? `<b>${me ? "Ty" : esc(names[r.winner_id])}</b> ${me ? "bereš" : "bere"} lokaci <b>${esc(r.picks[r.winner_id].lokace.name)}</b> a ${me ? "získáváš" : "získává"} <b class="vr__plus">+${r.awarded}</b> b.`
       : "Remíza se nepodařilo rozhodnout. Lokaci nikdo nezíská.";
     return `
       <div class="vm-bannerrow"><h2 class="vm-banner">Kolo ${r.round}: výsledek</h2><button class="hud__btn" type="button" data-close-result aria-label="Skrýt výsledek">✕</button></div>
