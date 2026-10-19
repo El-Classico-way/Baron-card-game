@@ -244,7 +244,7 @@ export class VydrzView {
   }
 
   _resultCtx() {
-    return { names: this._names(), isHost: this.isHost(), myId: this._state.you, character: this._me()?.character };
+    return { names: this._names(), characters: Object.fromEntries(this._state.players.map(p => [p.player_id, p.character?.name])), isHost: this.isHost(), myId: this._state.you, character: this._me()?.character };
   }
 
   _reopenResult() {

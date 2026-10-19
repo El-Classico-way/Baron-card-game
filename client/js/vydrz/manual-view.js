@@ -306,7 +306,7 @@ export class ManualView {
     const final = state.phase === "finished" && state.winner_announced ? state.last_result?.final : null;
     if (final && !this._splashed && !wasAnnounced) {
       this._splashed = true;
-      showBaronSplash({ name: final.winner_id ? (this._names()[final.winner_id] ?? final.winner_id) : null, isMe: final.winner_id === state.you });
+      showBaronSplash({ name: final.winner_id ? (this._names()[final.winner_id] ?? final.winner_id) : null, character: final.winner_id ? this._p(final.winner_id)?.character?.name : null, isMe: final.winner_id === state.you });
     }
   }
 

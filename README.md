@@ -40,6 +40,10 @@ Za běhu hry:
 
     PYTHONPATH=server:. uvicorn networking.server:app --port 8000
 
+## Struktura repozitáře
+
+Stručná mapa „kam sáhnout“ je v [STRUCTURE.md](STRUCTURE.md).
+
 ## Run the tests
 
     pytest

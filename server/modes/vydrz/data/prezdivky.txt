@@ -1,0 +1,68 @@
+# DOČASNÝ seznam: české hovorové názvy a přezdívky, použité jako názvy existencí.
+# Jedno jméno na řádek, řádky s # se přeskakují. Nahradí se skutečnými kartami.
+# Potřeba je aspoň 64 jmen (7 hráčů x 8 karet + zásoba).
+Kámoš z hospody
+Strejda
+Ségra
+Mirek Dušín
+Bráchovec
+Týpek
+Fešák
+Šmudla
+Pepa z vedlejšího
+Tlusťoch
+Hospodský
+Zabiják
+Cápek
+Kouzelník
+Šťoural
+Notorik
+Povaleč
+Šprt
+Dříč
+Paňák
+Zubatá
+Šéf
+Kolega z práce
+Podnikatel
+Ajťák
+Lamač srdcí
+Kecal
+Ochmelka
+Číšník
+Trouba
+Zlatá ručička
+Pohodář
+Nespavec
+Rychlík
+Vtipálek
+Dobrák
+Čepák
+Sousedka
+Babča
+Děda
+Taťka
+Mamča
+Tetka
+Kluk odvedle
+Ségra z Brna
+Chlupáč
+Lenoch
+Šplhoun
+Hrdina
+Zmatkař
+Kuchtík
+Vyvolený
+Prďoch
+Bumbrlíček
+Drsňák
+Hubáč
+Kapitán
+Fotograf
+Kytarista
+Opilec
+Rozumbrada
+Šašek
+Žolík
+Cvok
+Domácí

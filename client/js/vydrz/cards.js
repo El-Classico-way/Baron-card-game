@@ -58,9 +58,22 @@ function face(kind, card, inner, { extra = "", attrs = "" } = {}) {
   </div>`;
 }
 
+const FLAGS = {
+  cz: `<rect width="30" height="15" fill="#fff"/><rect y="15" width="30" height="15" fill="#d7141a"/><path d="M0 0L15 15L0 30Z" fill="#11457e"/>`,
+  sk: `<rect width="30" height="10" fill="#fff"/><rect y="10" width="30" height="10" fill="#0b4ea2"/><rect y="20" width="30" height="10" fill="#ee1c25"/>
+       <path d="M7 6h10v9q0 5-5 7q-5-2-5-7z" fill="#ee1c25" stroke="#fff" stroke-width="1"/><path d="M12 8v10M9 11h6" stroke="#fff" stroke-width="1.6"/>
+       <path d="M8.5 18q3.5-4 7 0q-1 2.5-3.5 3.5q-2.5-1-3.5-3.5z" fill="#0b4ea2"/>`,
+};
+
+/** Round country flag in the corner of a character card. */
+function flagBadge(flag) {
+  return FLAGS[flag] ? `<span class="vc__flag" data-flag="${attr(flag)}" aria-hidden="true"><svg viewBox="0 0 30 30" preserveAspectRatio="xMidYMid slice">${FLAGS[flag]}</svg></span>` : "";
+}
+
 export function characterFront(card, opts = {}) {
   const stats = Object.entries(card.stats).map(([d, v]) => statChip(d, v, { short: !/vc--big/.test(opts.extra ?? "") })).join("");
   return face("postava", card, `
+    ${flagBadge(card.flag)}
     <div class="vc__title">${esc(card.name)}</div>
     <div class="vc__photo" aria-hidden="true"><span class="vc__photo-mark">${esc(initials(card.name))}</span></div>
     <div class="vc__stats vc__stats--10">${stats}</div>`, opts);

@@ -23,11 +23,41 @@ def choose_first(g, offset=0):
 # --- content ---------------------------------------------------------------
 
 def test_default_content_is_valid_and_complete():
-    assert len(CONTENT.characters) == 10
-    assert len(CONTENT.make_drinks()) == 100
+    assert len(CONTENT.characters) == 11
+    assert len(CONTENT.make_drinks()) == 10 * CONTENT.drink_mean
     assert all(2 <= len(l.stats) <= 3 for l in CONTENT.make_locations())
     assert {l.number for l in CONTENT.make_locations()} == set(range(1, 9))
     assert all(set(c.stats) == set(DRINKS) for c in CONTENT.make_characters())
+
+
+def test_characters_are_the_agreed_roster_with_zero_sum_stats_and_flags():
+    chars = CONTENT.make_characters()
+    assert [c.name for c in chars] == ["Štěpán", "Fanda", "Tomáš", "Šálek", "Jurda", "Wirťák",
+                                       "Poručík Dan", "Frodo", "Dj. Quest", "Miki", "Martin"]
+    assert all(sum(c.stats.values()) == 0 for c in chars)
+    assert {c.name: c.flag for c in chars if c.flag != "cz"} == {"Martin": "sk"}
+    assert chars[0].to_dict()["flag"] == "cz"
+
+
+def test_location_and_existence_names_come_from_the_name_lists():
+    places = [l.name for l in CONTENT.make_locations()]
+    nicks = [e.name for e in CONTENT.make_existences()]
+    assert len(places) == 64 and len(set(places)) == 64 and "Praha" in places
+    assert len(nicks) == 64 and len(set(nicks)) == 64 and "Strejda" in nicks
+    assert not any(n.startswith(("Lokace", "Existence")) for n in places + nicks)
+
+
+def test_drink_counts_vary_per_game_around_twenty_and_are_seeded():
+    sizes = set()
+    for seed in range(30):
+        g = make(2, seed=seed)
+        left = g.snapshot("p1")["drinks_left"]
+        assert all(15 <= n <= 25 for n in left.values())
+        sizes.add(tuple(left.values()))
+    assert len(sizes) > 20                                    # different decks in different games
+    mean = sum(sum(v) for v in sizes) / (len(sizes) * 10)
+    assert 17 <= mean <= 23
+    assert make(2, seed=5).snapshot("p1")["drinks_left"] == make(2, seed=5).snapshot("p1")["drinks_left"]
 
 
 def test_bad_content_is_rejected():
@@ -178,7 +208,9 @@ def test_snapshot_shows_public_hands_and_deck_counts():
     s = g.snapshot("p1")
     assert s["mode"] == "vydrz" and s["round"] == 1 and s["you"] == "p1"
     assert all(len(p["locations"]) == 8 and len(p["existences"]) == 8 for p in s["players"])
-    assert s["decks"]["chlast"] == 100 and s["decks"]["postava"] == 7
+    assert 150 <= s["decks"]["chlast"] <= 250 and s["decks"]["postava"] == 8
+    assert sum(s["drinks_left"].values()) == s["decks"]["chlast"]
+    assert all(15 <= n <= 25 for n in s["drinks_left"].values())
 
 
 # --- waiting for every player ------------------------------------------------

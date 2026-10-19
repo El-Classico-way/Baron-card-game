@@ -53,7 +53,7 @@ def test_decks_can_be_inspected_and_the_drink_deck_shows_counts(page, base_url):
     expect(page.locator(".vy-drawn__deck .vc--back-chlast")).to_have_count(1)
     expect(page.locator(".vy-drinks-left li")).to_have_count(10)
     total = sum(int(t) for t in page.locator(".vy-drinks-left b").all_inner_texts())
-    assert total == 100
+    assert 150 <= total <= 250 and total == page.evaluate("window.__app.socket._vydrz.deck.length")   # 20 +/- 5 of each kind
     page.click(".vy-drawn__deck")
     expect(page.locator("#card-inspector")).to_be_hidden()
 
@@ -122,12 +122,26 @@ def test_manual_minus_key_steps_down_like_the_button(page, base_url):
     assert base == "0"
 
 
+def _answer_until_result(page):
+    """Enter the right number each time one is asked (a tie-break asks again)."""
+    for _ in range(40):
+        done = page.evaluate("""() => {
+            const v = window.__app.socket._vydrz;
+            if (v.phase !== 'calculating') return true;
+            if (v.calc && !v.calc.entries.me && v.calc.correct && v.calc.correct.me !== undefined) v.submit('me', v.calc.correct.me);
+            return false;
+        }""")
+        if done:
+            return
+        page.wait_for_timeout(400)
+
+
 def test_manual_results_can_be_closed_to_the_base_view(page, base_url):
     _manual_table(page, base_url, bots=1)
     _plan_all(page)
     page.click('[data-act="confirm"]')
     _wait_for_entry_open(page)
-    page.evaluate("window.__app.socket._vydrz.submit('me', window.__app.socket._vydrz.calc.correct.me)")
+    _answer_until_result(page)
     expect(page.locator(".vm-banner")).to_contain_text("výsledek", timeout=10000)
     page.click("[data-close-result]")
     expect(page.locator(".vm-banner")).to_have_count(0)
@@ -269,14 +283,15 @@ def test_manual_base_view_has_the_decks_and_drink_counts(page, base_url):
     _plan_all(page)
     page.click('[data-act="confirm"]')
     _wait_for_entry_open(page)
-    page.evaluate("window.__app.socket._vydrz.submit('me', window.__app.socket._vydrz.calc.correct.me)")
+    _answer_until_result(page)
     expect(page.locator(".vm-banner")).to_contain_text("výsledek", timeout=10000)
     page.click("[data-close-result]")
     for kind in ("postava", "lokace", "existence"):
         expect(page.locator(f'#vm-stage [data-pile="{kind}"]')).to_have_count(1)
     expect(page.locator("#vm-stage .vy-drinks-left li")).to_have_count(10)
     total = sum(int(t) for t in page.locator("#vm-stage .vy-drinks-left b").all_inner_texts())
-    assert total == 97                                                       # three drinks were drawn in round 1
+    assert total == page.evaluate("window.__app.socket._vydrz.deck.length")   # (three drinks were drawn in round 1)
+    assert 150 <= total + 3 <= 250
     page.click('#vm-stage [data-pile="lokace"]')
     expect(page.locator("#card-inspector")).to_be_visible()
 
@@ -301,3 +316,28 @@ def test_winner_splash_plays_one_party_popper_not_two_fanfares(browser, base_url
     assert pg.evaluate("window.__noise") == 1                                # the confetti rustle, once
     assert pg.evaluate("window.__osc") <= 2                                  # bang + whistle; the old arpeggio was 8 notes
     ctx.close()
+
+
+def test_character_card_has_a_flag_circle_and_czech_names(page, base_url):
+    page.goto(f"{base_url}?mock=table&bots=2")
+    expect(page.locator("#vy-me .vc--postava")).to_be_visible(timeout=8000)
+    expect(page.locator("#vy-me .vc__flag")).to_have_count(1)
+    flag = page.locator("#vy-me .vc__flag")
+    assert flag.get_attribute("data-flag") in ("cz", "sk")
+    box = flag.bounding_box()
+    card = page.locator("#vy-me .vc--postava").bounding_box()
+    assert abs(box["width"] - box["height"]) < 1                              # a circle
+    assert box["x"] + box["width"] > card["x"] + card["width"] * 0.75         # in the right-hand corner
+    assert box["y"] < card["y"] + card["height"] * 0.25                       # at the top
+    names = page.evaluate("window.__app.socket._vydrz.players.map(p => p.character.name)")
+    known = ["Štěpán", "Fanda", "Tomáš", "Šálek", "Jurda", "Wirťák", "Poručík Dan", "Frodo", "Dj. Quest", "Miki", "Martin"]
+    assert all(n in known for n in names)
+    place = page.locator("#vy-locations .vc__title").first.inner_text()
+    assert not place.startswith("Lokace")                                    # a real place name
+
+
+def test_winner_text_names_the_character(page, base_url):
+    page.goto(f"{base_url}?mock=table&bots=2")
+    expect(page.locator("#vydrz-panel")).to_be_visible(timeout=8000)
+    page.evaluate("void import('/js/vydrz/winner-splash.js').then(m => { m.showBaronSplash({ name: 'Alice', character: 'Poručík Dan', isMe: false }); })")
+    expect(page.locator("#baron-splash .bs__title")).to_have_text("Alice je Baron za postavu Poručík Dan!")

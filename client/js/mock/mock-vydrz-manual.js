@@ -40,7 +40,7 @@ export class MockManual {
     const dealt = new Set(this.players.flatMap(p => [p.character.uid, ...p.locations.map(l => l.uid), ...p.existences.map(e => e.uid)]));
     const rest = (list, kind, prefix) => list.map(c => ({ ...c, uid: `${prefix}-${c.id}`, kind })).filter(c => !dealt.has(c.uid));
     this._left = { postava: rest(DATA.characters, "postava", "c"), lokace: rest(DATA.locations, "lokace", "l"), existence: rest(DATA.existences, "existence", "e") };
-    this.deck = shuffle(DATA.drinks.flatMap(d => Array.from({ length: DATA.drink_copies }, () => d.id)));
+    this.deck = shuffle(DATA.drinks.flatMap(d => Array.from({ length: DATA.drink_count.mean + Math.floor(Math.random() * (2 * DATA.drink_count.spread + 1)) - DATA.drink_count.spread }, () => d.id)));
     this.discard = [];
 
     this.players.filter(p => p.player_id.startsWith("bot")).forEach((bot, i) => {

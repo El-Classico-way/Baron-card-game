@@ -53,7 +53,7 @@ export class MockVydrz {
       lokace: rest(DATA.locations, "lokace", "l"),
       existence: rest(DATA.existences, "existence", "e"),
     };
-    this.deck = shuffle(DATA.drinks.flatMap(d => Array.from({ length: DATA.drink_copies }, () => d.id)));
+    this.deck = shuffle(DATA.drinks.flatMap(d => Array.from({ length: DATA.drink_count.mean + Math.floor(Math.random() * (2 * DATA.drink_count.spread + 1)) - DATA.drink_count.spread }, () => d.id)));
     this.discard = [];
     this._scheduleBots();
   }

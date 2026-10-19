@@ -543,3 +543,10 @@ body.static-preview #join-form { display: none; }
   .vm-drink .vc { --vc-w: 130px; }
   .vm-char .vc { --vc-w: 200px; }
 }
+
+/* Country flag: a filled circle in the top-right corner of a character card */
+.vc--postava { position: relative; }
+.vc__flag { position: absolute; top: .45em; right: .45em; width: 2.1em; height: 2.1em; border-radius: 50%; overflow: hidden; border: .09em solid rgba(0, 0, 0, .35); box-shadow: 0 .05em .2em rgba(0, 0, 0, .35); z-index: 1; display: block; }
+.vc__flag svg { width: 100%; height: 100%; display: block; }
+.vc--postava .vc__title { padding-inline: 2.9em; }
+.bs__char { color: var(--gold-light); }

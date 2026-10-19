@@ -121,7 +121,7 @@ class ManualVydrzGame:
         self.content = content
         self.rounds_total = rounds
         self.seed = seed if seed is not None else random.SystemRandom().randrange(2**31)
-        self._rng = random.Random(self.seed)          # only used to shuffle
+        self._rng = random.Random(self.seed)          # shuffling and the drink-deck size only
         self._player_ids = list(player_ids)
         self._names = display_names or {}
         self.phase = Phase.LOBBY
@@ -152,7 +152,7 @@ class ManualVydrzGame:
         n = len(self._player_ids)
         if not MIN_PLAYERS <= n <= MAX_PLAYERS:
             return ActionResult.fail(f"Potřeba {MIN_PLAYERS}–{MAX_PLAYERS} hráčů, je jich {n}.")
-        deal = deal_hands(self.content, n, self._shuffled)
+        deal = deal_hands(self.content, n, self._shuffled, self._rng.randint)
         if isinstance(deal, str):
             return ActionResult.fail(deal)
         self.players = [

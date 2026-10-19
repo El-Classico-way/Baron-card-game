@@ -177,7 +177,7 @@ export class ResultOverlay {
   }
 
   async _splash(f, ctx) {
-    await showBaronSplash({ name: f.winner_id ? (ctx.names[f.winner_id] ?? f.winner_id) : null, isMe: f.winner_id === ctx.myId });
+    await showBaronSplash({ name: f.winner_id ? (ctx.names[f.winner_id] ?? f.winner_id) : null, character: f.winner_id ? ctx.characters?.[f.winner_id] : null, isMe: f.winner_id === ctx.myId });
   }
 
   // ---------------------------------------------------------------- building

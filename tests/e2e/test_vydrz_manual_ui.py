@@ -254,7 +254,7 @@ def test_full_manual_game_reaches_the_final_ranking(page, base_url):
     expect(page.locator(".vr__ranking li")).to_have_count(0)
     page.click('[data-act="announce"]')
     expect(page.locator("#baron-splash")).to_be_visible(timeout=10000)       # everybody sees who is the Baron
-    expect(page.locator("#baron-splash .bs__title")).to_contain_text("je Baron!")
+    expect(page.locator("#baron-splash .bs__title")).to_contain_text("je Baron za postavu")
     page.click("#baron-splash .bs__btn")
     expect(page.locator("#baron-splash")).to_be_hidden()
     expect(page.locator(".vr__ranking li")).to_have_count(2)
